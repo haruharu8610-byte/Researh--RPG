@@ -14,10 +14,18 @@ import {
 } from "@/lib/battle";
 import {
   getEquippedWeapon, getEquippedArmor, getInventory, removeInventory, addInventory,
-  SHOP_ITEMS,
+  getEquipmentEffect, registerCraftedItems, SHOP_ITEMS,
 } from "@/lib/equipment";
 import { addGold } from "@/lib/gold";
 import { getParty, type PartyMemberData } from "@/lib/party";
+import { MATERIALS, addMaterial } from "@/lib/materials";
+import { RARITY_COLOR, RARITY_LABEL } from "@/lib/rarity";
+
+const CRAFTED_KEY = "rpg_crafted_list";
+function getCraftedIds(): string[] {
+  if (typeof localStorage === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(CRAFTED_KEY) ?? "[]"); } catch { return []; }
+}
 
 const JOB_KEY     = "rpg_job_class";
 const VICTORY_KEY = "rpg_victories";
@@ -112,6 +120,7 @@ export default function BattlePage() {
   const [spellIdx, setSpellIdx]         = useState(0);
   const [floor, setFloor]               = useState(1);
   const [isBossFloor, setIsBossFloor]   = useState(false);
+  const [isRareFloor, setIsRareFloor]   = useState(false);
 
   // ── Refs (logic) ───────────────────────────────────────
   const playerRef          = useRef<PlayerStats | null>(null);
@@ -204,7 +213,26 @@ export default function BattlePage() {
     setVictories(newVic);
     localStorage.setItem(VICTORY_KEY, String(newVic));
     setFloor(nextFloor);
-    pushMessages([`てきをたおした！`, `${totalGold}Gてにいれた！`, `ポーション1個もらった！`, `${nextFloor}階へ進む…`], "victory");
+
+    // ドロップ処理
+    const dropMsgs: string[] = [];
+    for (const e of updatedEnemies) {
+      for (const drop of e.dropTable) {
+        if (Math.random() < drop.chance) {
+          addMaterial(drop.materialId, 1);
+          const mat = MATERIALS.find(m => m.id === drop.materialId);
+          if (mat) dropMsgs.push(`✨ ${e.name}が[${RARITY_LABEL[mat.rarity]}]${mat.name}を落とした！`);
+        }
+      }
+    }
+
+    pushMessages([
+      `てきをたおした！`,
+      `${totalGold}Gてにいれた！`,
+      ...dropMsgs,
+      `ポーション1個もらった！`,
+      `${nextFloor}階へ進む…`,
+    ], "victory");
     return true;
   }
 
@@ -507,27 +535,31 @@ export default function BattlePage() {
       const spellId = e.spellIds[Math.floor(Math.random() * e.spellIds.length)];
       const spellDef = SPELLS.find(s => s.id === spellId);
       if (spellDef?.effect) {
-        // Status spell
         msgs.push(`${e.name}が${spellDef.name}を唱えた！`);
-        const targetResist = target.isPlayer ? p.statusResist
-          : (partyRef.current.find(m => m.id === target.id)?.statusResist ?? 0.5);
-        const curPSt = target.isPlayer ? playerStatusRef.current
-          : partyRef.current.find(m => m.id === target.id)?.status ?? null;
-        if (curPSt) {
-          msgs.push("しかし効果はなかった！");
-        } else if (tryApplyStatus(spellDef.effect.baseChance, targetResist)) {
-          const newSt: ActiveStatus = { type: spellDef.effect.status, turnsLeft: spellDef.effect.turns };
-          if (target.isPlayer) { setPlayerStatus(newSt); playerStatusRef.current = newSt; }
-          else {
-            const upd = partyRef.current.map(m => m.id === target.id ? { ...m, status: newSt } : m);
-            partyRef.current = upd; syncPartyState();
-          }
-          msgs.push(`${target.name}が${STATUS_LABEL[spellDef.effect.status]}になった！`);
+        // プレイヤーへの毒スペルを毒免疫でブロック
+        const isPoisonToPlayer = target.isPlayer && spellDef.effect.status === "poison" && p.craftEffect.poisonImmune;
+        if (isPoisonToPlayer) {
+          msgs.push("毒無効！");
         } else {
-          msgs.push(`${STATUS_LABEL[spellDef.effect.status]}は効かなかった！`);
+          const targetResist = target.isPlayer ? p.statusResist
+            : (partyRef.current.find(m => m.id === target.id)?.statusResist ?? 0.5);
+          const curPSt = target.isPlayer ? playerStatusRef.current
+            : partyRef.current.find(m => m.id === target.id)?.status ?? null;
+          if (curPSt) {
+            msgs.push("しかし効果はなかった！");
+          } else if (tryApplyStatus(spellDef.effect.baseChance, targetResist)) {
+            const newSt: ActiveStatus = { type: spellDef.effect.status, turnsLeft: spellDef.effect.turns };
+            if (target.isPlayer) { setPlayerStatus(newSt); playerStatusRef.current = newSt; }
+            else {
+              const upd = partyRef.current.map(m => m.id === target.id ? { ...m, status: newSt } : m);
+              partyRef.current = upd; syncPartyState();
+            }
+            msgs.push(`${target.name}が${STATUS_LABEL[spellDef.effect.status]}になった！`);
+          } else {
+            msgs.push(`${STATUS_LABEL[spellDef.effect.status]}は効かなかった！`);
+          }
         }
       } else if (spellDef) {
-        // Damage spell
         const dmg = calcEnemySpellDamage(e.magic, spellDef);
         msgs.push(`${e.name}が${spellDef.name}を唱えた！`, `${target.name}に${dmg}のダメージ！`);
         if (target.isPlayer) {
@@ -554,6 +586,13 @@ export default function BattlePage() {
         : (partyRef.current.find(m => m.id === target.id)?.defense ?? 0);
       const dmg = calcPhysicalDamage(e.floorAtk, defVal);
       msgs.push(`${e.name}の${target.name}へのこうげき！　${dmg}のダメージ！`);
+      // ダメージ反射（プレイヤーへの物理攻撃時）
+      if (target.isPlayer && p.craftEffect.reflectDamage > 0) {
+        const reflectDmg = Math.max(1, Math.floor(dmg * p.craftEffect.reflectDamage));
+        const updE = enemiesRef.current.map(en => en.uid === uid ? { ...en, hp: Math.max(0, en.hp - reflectDmg) } : en);
+        enemiesRef.current = updE; setEnemies([...updE]);
+        msgs.push(`🛡️ ${reflectDmg}ダメージを反射した！`);
+      }
       if (target.isPlayer) {
         const newHp = Math.max(0, playerHpRef.current - dmg);
         setPlayerHp(newHp); playerHpRef.current = newHp;
@@ -594,12 +633,21 @@ export default function BattlePage() {
       const stats = await res.json();
       const level  = Math.floor(stats.totalPoints / 100) + 1;
       const job    = (localStorage.getItem(JOB_KEY) ?? "warrior") as JobClass;
+      // クラフトアイテムを登録してから装備取得
+      const { CRAFT_RECIPES } = await import("@/lib/materials");
+      registerCraftedItems(getCraftedIds().map(id => {
+        const r = CRAFT_RECIPES.find(r => r.id === id)!;
+        return { id: r.id, name: r.name, category: r.category, cost: 0, description: r.description,
+          attackBonus: r.attackBonus, defenseBonus: r.defenseBonus, magicBonus: r.magicBonus,
+          statusResist: r.statusResist, rarity: r.rarity, specialEffect: r.specialEffect };
+      }));
       const weapon = getEquippedWeapon();
       const armor  = getEquippedArmor();
+      const craftEffect = getEquipmentEffect(weapon, armor);
       const p = calcPlayerStats(level, job,
         weapon?.attackBonus ?? 0, weapon?.magicBonus ?? 0,
         armor?.defenseBonus ?? 0, armor?.magicBonus ?? 0,
-        armor?.statusResist ?? 0,
+        armor?.statusResist ?? 0, craftEffect,
       );
 
       // Build party from storage
@@ -632,6 +680,7 @@ export default function BattlePage() {
       setSpells(availableSpells);
       setFloor(currentFloor);
       setIsBossFloor(boss);
+      setIsRareFloor(grp.length === 1 && !!grp[0].isRare);
 
       // Build initial turn order
       const order: TurnActor[] = ([
@@ -766,12 +815,21 @@ export default function BattlePage() {
       const eSt = enemyStatusesRef.current.get(aliveTarget.uid);
       if (eSt?.type === "sleep") { setEnemyStatus(aliveTarget.uid, null); msgs.push(`${aliveTarget.name}は目を覚ました！`); }
       updated = updated.map(e => e.uid === aliveTarget.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
+
+      // 炎付加ダメージ（クラフト効果）
+      if (player.craftEffect.fireOnHit > 0) {
+        const fireDmg = player.craftEffect.fireOnHit;
+        flashEnemy(aliveTarget.uid);
+        updated = updated.map(e => e.uid === aliveTarget.uid ? { ...e, hp: Math.max(0, e.hp - fireDmg) } : e);
+        msgs.push(`🔥 炎の付加ダメージ！ ${fireDmg}ダメージ！`);
+      }
     }
 
     if (action.type === "spell") {
       const spell = action.spell;
-      if (playerMpRef.current < spell.mpCost) { pushMessages(["MPがたりない！"], "select"); return; }
-      const newMp = playerMpRef.current - spell.mpCost;
+      const actualMpCost = Math.max(1, Math.ceil(spell.mpCost * (player.craftEffect.mpCostMultiplier)));
+      if (playerMpRef.current < actualMpCost) { pushMessages(["MPがたりない！"], "select"); return; }
+      const newMp = playerMpRef.current - actualMpCost;
       setPlayerMp(newMp); playerMpRef.current = newMp;
 
       // Ally-targeting spells
@@ -834,7 +892,8 @@ export default function BattlePage() {
         }
       } else {
         for (const t of targets) {
-          const dmg = calcMagicDamage(player.magic, spell, t.element, t.magicResist);
+          const rawDmg = calcMagicDamage(player.magic, spell, t.element, t.magicResist);
+          const dmg = Math.round(rawDmg * player.craftEffect.spellMultiplier);
           flashEnemy(t.uid);
           updated = updated.map(e => e.uid === t.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
           const eff = (() => {
@@ -888,8 +947,8 @@ export default function BattlePage() {
 
         {/* フロア + ターン順 */}
         <div className="flex justify-between items-start px-1">
-          <span className={`text-sm font-bold ${isBossFloor ? "text-red-400 animate-pulse" : "text-yellow-300"}`}>
-            {isBossFloor ? "⚠️ BOSS " : ""}🗺️ {floor}階
+          <span className={`text-sm font-bold ${isBossFloor ? "text-red-400 animate-pulse" : isRareFloor ? "text-yellow-300 animate-pulse" : "text-yellow-300"}`}>
+            {isBossFloor ? "⚠️ BOSS " : isRareFloor ? "✨ レア！ " : ""}🗺️ {floor}階
           </span>
           <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
             {turnOrder.map((a, i) => (
@@ -908,7 +967,7 @@ export default function BattlePage() {
         </div>
 
         {/* 敵エリア */}
-        <div className={`rounded-xl border-2 p-3 ${isBossFloor ? "border-red-600 bg-red-950/30" : "border-gray-500 bg-gray-800"}`}>
+        <div className={`rounded-xl border-2 p-3 ${isBossFloor ? "border-red-600 bg-red-950/30" : isRareFloor ? "border-yellow-500 bg-yellow-950/20" : "border-gray-500 bg-gray-800"}`}>
           <div className="flex justify-center gap-4 flex-wrap">
             {enemies.map((e) => {
               const isAlive = e.hp > 0;
@@ -928,7 +987,9 @@ export default function BattlePage() {
                   </div>
                   {isAlive ? (
                     <div className="text-center space-y-0.5">
-                      <div className="text-xs text-white font-bold">{e.name}</div>
+                      <div className={`text-xs font-bold ${e.isRare ? "text-yellow-300" : "text-white"}`}>
+                        {e.isRare ? "✨ " : ""}{e.name}
+                      </div>
                       <div className="flex flex-wrap justify-center gap-1 text-xs">
                         <span className="text-gray-300">{ELEMENT_LABEL[e.element]}</span>
                         <span className="text-gray-400">⚡{e.speed}</span>
@@ -1057,10 +1118,17 @@ export default function BattlePage() {
         {/* プレイヤーステータス */}
         <div className={`rounded-xl border-2 border-gray-500 bg-gray-800 p-3 text-sm transition-colors ${playerDamaged ? "border-red-500 bg-red-950/20" : ""}`}>
           <div className="flex justify-between mb-1.5">
-            <span className="text-yellow-300 font-bold">
-              Lv.{player.level} あなた（{JOB[player.jobClass]}）
-              {speedBuffedIds.has("player") && <span className="ml-1 text-cyan-300 text-xs">⚡速↑</span>}
-            </span>
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-yellow-300 font-bold">
+                Lv.{player.level} あなた（{JOB[player.jobClass]}）
+              </span>
+              {speedBuffedIds.has("player") && <span className="text-cyan-300 text-xs">⚡速↑</span>}
+              {player.craftEffect.mpCostMultiplier < 1 && <span className="text-blue-300 text-xs">MP節約</span>}
+              {player.craftEffect.poisonImmune && <span className="text-green-300 text-xs">毒無効</span>}
+              {player.craftEffect.reflectDamage > 0 && <span className="text-orange-300 text-xs">反射{Math.round(player.craftEffect.reflectDamage*100)}%</span>}
+              {player.craftEffect.spellMultiplier > 1 && <span className="text-purple-300 text-xs">魔法✨×{player.craftEffect.spellMultiplier.toFixed(1)}</span>}
+              {player.craftEffect.fireOnHit > 0 && <span className="text-red-300 text-xs">🔥+{player.craftEffect.fireOnHit}</span>}
+            </div>
             <div className="flex gap-2 items-center">
               {playerStatus && (
                 <span className="rounded bg-yellow-900 border border-yellow-700 px-1.5 py-0.5 text-xs text-yellow-300 font-bold">

@@ -153,7 +153,7 @@ export default function GamePage() {
         </div>
 
         {/* アクションボタン */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => router.push("/game/battle")}
             className="rounded-xl border border-yellow-600 bg-yellow-950 py-3 text-sm font-bold text-yellow-300 hover:bg-yellow-900 transition-colors"
@@ -171,6 +171,12 @@ export default function GamePage() {
             className="rounded-xl border border-purple-600 bg-purple-950 py-3 text-sm font-bold text-purple-300 hover:bg-purple-900 transition-colors"
           >
             🏪 ショップ
+          </button>
+          <button
+            onClick={() => router.push("/game/craft")}
+            className="rounded-xl border border-orange-600 bg-orange-950 py-3 text-sm font-bold text-orange-300 hover:bg-orange-900 transition-colors"
+          >
+            🔨 クラフト
           </button>
         </div>
 

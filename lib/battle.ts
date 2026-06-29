@@ -1,3 +1,5 @@
+import { DEFAULT_CRAFT_EFFECT, type CraftEffect } from "@/lib/rarity";
+
 export type Element = "fire" | "water" | "wind" | "earth" | "none";
 export type EnemyShape = "slime" | "bat" | "scorpion" | "golem" | "dragon";
 export type JobClass = "warrior" | "mage" | "cleric" | "rogue";
@@ -127,6 +129,8 @@ export function tryApplyStatus(baseChance: number, resist: number): boolean {
 }
 
 // ── 敵定義 ────────────────────────────────────────────────────
+export type DropEntry = { materialId: string; chance: number };
+
 export type EnemyType = {
   id: string; name: string;
   maxHp: number; attack: number; defense: number; magic: number;
@@ -134,9 +138,11 @@ export type EnemyType = {
   color: number; shape: EnemyShape; element: Element;
   physResist: number;
   magicResist: number;
-  speed: number; // 素早さ
+  speed: number;
   statusResist: Record<StatusEffect, number>;
   spellIds: string[];
+  dropTable: DropEntry[];
+  isRare?: boolean; // レアモンスターフラグ
 };
 
 export const ENEMIES: EnemyType[] = [
@@ -147,6 +153,7 @@ export const ENEMIES: EnemyType[] = [
     physResist: 1, magicResist: 1, speed: 7,
     statusResist: { poison: 0.3, paralysis: 0.3, sleep: 0.2, confuse: 0.2 },
     spellIds: [],
+    dropTable: [{ materialId: "stone", chance: 0.15 }],
   },
   {
     id: "bat", name: "ドラキー", maxHp: 22, attack: 8, defense: 2, magic: 10,
@@ -154,31 +161,70 @@ export const ENEMIES: EnemyType[] = [
     color: 0x7c3aed, shape: "bat", element: "wind",
     physResist: 1, magicResist: 1, speed: 18,
     statusResist: { poison: 0.4, paralysis: 0.4, sleep: 0.3, confuse: 0.3 },
-    spellIds: ["bagi", "manusa"], // プレイヤーに混乱をかけてくる
+    spellIds: ["bagi", "manusa"],
+    dropTable: [{ materialId: "bat_wing", chance: 0.45 }],
   },
   {
     id: "scorpion", name: "おおさそり", maxHp: 40, attack: 14, defense: 6, magic: 0,
     expReward: 28, goldReward: 35, minLevel: 3,
     color: 0xd97706, shape: "scorpion", element: "earth",
     physResist: 1, magicResist: 1, speed: 12,
-    statusResist: { poison: 0.9, paralysis: 0.5, sleep: 0.4, confuse: 0.5 }, // 毒ほぼ無効（自分が毒持ち）
-    spellIds: ["dokudoku"], // 毒をかけてくる
+    statusResist: { poison: 0.9, paralysis: 0.5, sleep: 0.4, confuse: 0.5 },
+    spellIds: ["dokudoku"],
+    dropTable: [{ materialId: "hard_shell", chance: 0.40 }, { materialId: "iron_ore", chance: 0.60 }],
   },
   {
     id: "golem", name: "ゴーレム", maxHp: 70, attack: 22, defense: 14, magic: 8,
     expReward: 55, goldReward: 70, minLevel: 5,
     color: 0x6b7280, shape: "golem", element: "earth",
     physResist: 0.25, magicResist: 1, speed: 4,
-    statusResist: { poison: 1.0, paralysis: 0.9, sleep: 0.9, confuse: 0.6 }, // 石→毒・麻痺ほぼ無効
+    statusResist: { poison: 1.0, paralysis: 0.9, sleep: 0.9, confuse: 0.6 },
     spellIds: ["gira"],
+    dropTable: [{ materialId: "golem_core", chance: 0.30 }, { materialId: "iron_ore", chance: 0.80 }],
   },
   {
     id: "dragon", name: "ドラゴン", maxHp: 130, attack: 38, defense: 22, magic: 30,
     expReward: 110, goldReward: 150, minLevel: 8,
     color: 0xdc2626, shape: "dragon", element: "fire",
     physResist: 1, magicResist: 0.45, speed: 13,
-    statusResist: { poison: 0.8, paralysis: 0.8, sleep: 0.85, confuse: 0.7 }, // 竜→全体的に高耐性
-    spellIds: ["merazoma", "rariho"], // 眠りをかけてくる
+    statusResist: { poison: 0.8, paralysis: 0.8, sleep: 0.85, confuse: 0.7 },
+    spellIds: ["merazoma", "rariho"],
+    dropTable: [{ materialId: "dragon_scale", chance: 0.50 }, { materialId: "rare_crystal", chance: 0.12 }],
+  },
+
+  // ── レアモンスター ──────────────────────────────────────────
+  {
+    id: "slime_rare", name: "はぐれメタル",
+    maxHp: 6, attack: 3, defense: 255, magic: 0,
+    expReward: 1000, goldReward: 500, minLevel: 1,
+    color: 0xadd8e6, shape: "slime", element: "water",
+    physResist: 0.03, magicResist: 0.05, speed: 55,
+    statusResist: { poison: 0.99, paralysis: 0.99, sleep: 0.99, confuse: 0.99 },
+    spellIds: [],
+    dropTable: [{ materialId: "rare_crystal", chance: 0.95 }],
+    isRare: true,
+  },
+  {
+    id: "bat_rare", name: "ゴールデンバット",
+    maxHp: 50, attack: 18, defense: 6, magic: 20,
+    expReward: 150, goldReward: 300, minLevel: 1,
+    color: 0xffd700, shape: "bat", element: "wind",
+    physResist: 1, magicResist: 0.8, speed: 30,
+    statusResist: { poison: 0.7, paralysis: 0.7, sleep: 0.6, confuse: 0.5 },
+    spellIds: ["bagima", "manusa"],
+    dropTable: [{ materialId: "bat_wing", chance: 1.0 }, { materialId: "legend_ore", chance: 0.25 }],
+    isRare: true,
+  },
+  {
+    id: "scorpion_rare", name: "デスサソリ",
+    maxHp: 80, attack: 28, defense: 15, magic: 0,
+    expReward: 200, goldReward: 250, minLevel: 3,
+    color: 0xff4444, shape: "scorpion", element: "earth",
+    physResist: 1, magicResist: 1, speed: 20,
+    statusResist: { poison: 0.95, paralysis: 0.6, sleep: 0.5, confuse: 0.6 },
+    spellIds: ["dokudoku", "mahi"],
+    dropTable: [{ materialId: "hard_shell", chance: 1.0 }, { materialId: "rare_crystal", chance: 0.20 }],
+    isRare: true,
   },
 ];
 
@@ -198,7 +244,17 @@ export function advanceFloor(): number {
 
 export function getFloorEnemyGroup(playerLevel: number, floor: number): ActiveEnemy[] {
   const isBoss = floor % 5 === 0;
-  const pool = ENEMIES.filter((e) => e.minLevel <= Math.max(1, playerLevel + Math.floor(floor / 4)));
+  const normalEnemies = ENEMIES.filter(e => !e.isRare);
+  const rareEnemies   = ENEMIES.filter(e => e.isRare);
+
+  // 8%でレアモンスター単体（ボスフロアでは出現しない）
+  if (!isBoss && rareEnemies.length > 0 && Math.random() < 0.08) {
+    const base = rareEnemies[Math.floor(Math.random() * rareEnemies.length)];
+    const hp = base.maxHp;
+    return [{ ...base, uid: `${base.id}-0`, hp, floorHp: hp, floorAtk: base.attack }];
+  }
+
+  const pool = normalEnemies.filter(e => e.minLevel <= Math.max(1, playerLevel + Math.floor(floor / 4)));
   const base = isBoss ? pool[pool.length - 1] : pool[Math.floor(Math.random() * pool.length)];
   const count = isBoss ? 1 : Math.floor(Math.random() * 3) + 1;
   const hpMult  = 1 + (floor - 1) * 0.18 + (isBoss ? 1 : 0);
@@ -216,6 +272,7 @@ export type PlayerStats = {
   attack: number; defense: number; magic: number;
   speed: number;
   statusResist: number;
+  craftEffect: CraftEffect;
 };
 
 export const JOB_BASE_SPEED: Record<JobClass, number> = {
@@ -227,7 +284,8 @@ export const JOB_BASE_SPEED: Record<JobClass, number> = {
 
 export function calcPlayerStats(
   level: number, jobClass: JobClass,
-  weaponAtk = 0, weaponMag = 0, armorDef = 0, armorMag = 0, armorStatusResist = 0
+  weaponAtk = 0, weaponMag = 0, armorDef = 0, armorMag = 0, armorStatusResist = 0,
+  craftEffect: CraftEffect = DEFAULT_CRAFT_EFFECT,
 ): PlayerStats {
   const s: PlayerStats = {
     level, jobClass,
@@ -236,8 +294,9 @@ export function calcPlayerStats(
     attack:   5 + level * 3 + weaponAtk,
     defense:  3 + level * 2 + armorDef,
     magic:    3 + level * 2 + weaponMag + armorMag,
-    speed:    JOB_BASE_SPEED[jobClass] + Math.floor(level * 0.5),
-    statusResist: Math.min(0.95, 0.5 + armorStatusResist),
+    speed:    JOB_BASE_SPEED[jobClass] + Math.floor(level * 0.5) + craftEffect.speedBonus,
+    statusResist: Math.min(0.95, 0.5 + armorStatusResist + craftEffect.extraStatusResist),
+    craftEffect,
   };
   if (jobClass === "warrior") { s.attack += 6; s.defense += 4; s.maxHp += 10; }
   if (jobClass === "mage")    { s.magic  += 12 + level * 3; s.maxMp += 15 + level * 3; }
