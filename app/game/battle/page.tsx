@@ -334,7 +334,7 @@ export default function BattlePage() {
       <div className="w-full max-w-lg space-y-2">
 
         {/* 敵エリア */}
-        <div className="rounded-xl border border-gray-700 bg-gray-900 p-3">
+        <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
           <div className="flex justify-center gap-4">
             {enemies.map((e, i) => {
               const isAlive = e.hp > 0;
@@ -353,12 +353,12 @@ export default function BattlePage() {
                   </div>
                   {isAlive && (
                     <div className="text-center">
-                      <div className="text-xs text-gray-300">{e.name}</div>
-                      <div className="text-xs text-gray-500">{ELEMENT_LABEL[e.element]}</div>
+                      <div className="text-xs text-white font-bold">{e.name}</div>
+                      <div className="text-xs text-gray-300">{ELEMENT_LABEL[e.element]}</div>
                       <HpBar current={e.hp} max={e.maxHp} blocks={10} />
                     </div>
                   )}
-                  {!isAlive && <div className="text-xs text-gray-600">たおれた</div>}
+                  {!isAlive && <div className="text-xs text-gray-400 font-bold">たおれた</div>}
                 </div>
               );
             })}
@@ -366,24 +366,38 @@ export default function BattlePage() {
         </div>
 
         {/* メッセージウィンドウ */}
-        <div className="min-h-[64px] rounded-xl border border-gray-700 bg-gray-900 p-3 text-sm leading-6">
+        <div className="min-h-[72px] rounded-xl border-2 border-gray-500 bg-gray-800 p-4 text-sm leading-7">
           {phase === "message" && (
-            <p>{displayed}{displayed === messages[0] && <span className="ml-1 animate-bounce inline-block text-yellow-400">▼</span>}</p>
+            <div>
+              <p className="text-white font-medium">{displayed}</p>
+              {displayed === messages[0] && (
+                <p className="text-xs text-yellow-400 mt-1 animate-pulse">▼ クリックまたはEnterで進む</p>
+              )}
+            </div>
           )}
-          {phase === "victory" && <p className="text-yellow-300 font-bold">🎉 しょうり！</p>}
-          {phase === "defeat"  && <p className="text-red-400 font-bold">💀 やられてしまった…</p>}
-          {phase === "ran"     && <p className="text-gray-300">うまくにげられた！</p>}
+          {phase === "victory" && <p className="text-yellow-300 font-bold text-base">🎉 しょうり！</p>}
+          {phase === "defeat"  && <p className="text-red-300 font-bold text-base">💀 やられてしまった…</p>}
+          {phase === "ran"     && <p className="text-white font-medium">うまくにげられた！</p>}
           {["victory","defeat","ran"].includes(phase) && (
-            <p className="text-xs text-gray-500 mt-1">[ Enter / クリック でもどる ]</p>
+            <p className="text-xs text-yellow-400 mt-2 animate-pulse">▼ クリックまたはEnterでもどる</p>
+          )}
+          {phase === "select" && (
+            <p className="text-yellow-200 font-medium">コマンドを選んでください</p>
           )}
           {phase === "targeting" && (
-            <p className="text-yellow-300">← → でターゲット選択　Enterで決定</p>
+            <p className="text-yellow-200 font-medium">← → でターゲット選択　Enterで決定</p>
+          )}
+          {phase === "spells" && (
+            <p className="text-yellow-200 font-medium">まほうを選んでください　Escでもどる</p>
+          )}
+          {phase === "intro" && (
+            <p className="text-white font-medium animate-pulse">読み込み中...</p>
           )}
         </div>
 
         {/* コマンド */}
         {phase === "select" && (
-          <div className="rounded-xl border border-gray-700 bg-gray-900 p-3">
+          <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
             <div className="grid grid-cols-2 gap-2">
               {(["attack","magic","item","run"] as const).map((cmd) => {
                 const labels = { attack:"たたかう", magic:"まほう", item:`どうぐ(${potionCount+etherCount})`, run:"にげる" };
@@ -406,8 +420,8 @@ export default function BattlePage() {
 
         {/* 魔法選択 */}
         {phase === "spells" && (
-          <div className="rounded-xl border border-gray-700 bg-gray-900 p-3">
-            <div className="text-xs text-gray-400 mb-2">まほう選択 (Escでもどる)</div>
+          <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
+            <div className="text-xs text-gray-200 mb-2 font-bold">まほう選択 (Escでもどる)</div>
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {spells.map((sp, i) => (
                 <button
@@ -433,10 +447,10 @@ export default function BattlePage() {
         )}
 
         {/* プレイヤーステータス */}
-        <div className="rounded-xl border border-gray-700 bg-gray-900 p-3 text-sm">
+        <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3 text-sm">
           <div className="flex justify-between mb-2">
-            <span className="text-yellow-200 font-bold">Lv.{player.level} {JOB[player.jobClass]}</span>
-            <span className="text-gray-400 text-xs">🏆 {victories}勝</span>
+            <span className="text-yellow-300 font-bold">Lv.{player.level} {JOB[player.jobClass]}</span>
+            <span className="text-gray-200 text-xs font-bold">🏆 {victories}勝</span>
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs">
