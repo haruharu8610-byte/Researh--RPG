@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import GameCanvas, { themeToJobClass, type JobClass } from "@/components/GameCanvas";
+import GameCanvas, { type JobClass } from "@/components/GameCanvas";
+import JobClassSelector from "@/components/JobClassSelector";
 
 type Stats = {
   totalTasks: number;
@@ -12,24 +13,37 @@ type Stats = {
   primaryTheme: string | null;
 };
 
+const JOB_KEY = "rpg_job_class";
+
 function calcLevel(points: number) { return Math.floor(points / 100) + 1; }
 function calcExp(points: number) { return points % 100; }
 
 export default function GamePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [jobClass, setJobClass] = useState<JobClass>("warrior");
+  const [showJobSelect, setShowJobSelect] = useState(false);
   const [error, setError] = useState("");
   const [celebration, setCelebration] = useState<string | null>(null);
   const router = useRouter();
+
+  // localStorageから職業を復元
+  useEffect(() => {
+    const saved = localStorage.getItem(JOB_KEY) as JobClass | null;
+    if (saved) setJobClass(saved);
+  }, []);
+
+  function handleJobChange(j: JobClass) {
+    setJobClass(j);
+    localStorage.setItem(JOB_KEY, j);
+    setShowJobSelect(false);
+  }
 
   const fetchStats = useCallback(async (token: string) => {
     const res = await fetch(process.env.NEXT_PUBLIC_STATS_API_URL!, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) { setError("データの取得に失敗しました"); return; }
-    const data: Stats = await res.json();
-    setStats(data);
-    setJobClass(themeToJobClass(data.primaryTheme));
+    setStats(await res.json());
   }, []);
 
   useEffect(() => {
@@ -41,7 +55,6 @@ export default function GamePage() {
       token = session.access_token;
       await fetchStats(token);
 
-      // タスク完了をリアルタイムで検知
       const channel = supabase
         .channel("task-done")
         .on(
@@ -49,7 +62,6 @@ export default function GamePage() {
           { event: "UPDATE", schema: "public", table: "tasks", filter: `user_id=eq.${session.user.id}` },
           async (payload) => {
             if (payload.new?.status === "done" && payload.old?.status !== "done") {
-              // アニメーション表示
               const title = payload.new.title ?? "タスク";
               setCelebration(title);
               setTimeout(() => setCelebration(null), 3000);
@@ -78,7 +90,6 @@ export default function GamePage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-      {/* タスク完了アニメーション */}
       {celebration && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
           <div className="animate-bounce rounded-2xl bg-indigo-600/90 px-8 py-6 text-center shadow-2xl">
@@ -101,12 +112,6 @@ export default function GamePage() {
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6 space-y-4">
           <GameCanvas level={level} jobClass={jobClass} />
 
-          {stats.primaryTheme && (
-            <p className="text-center text-xs text-gray-500">
-              専門テーマ: {stats.primaryTheme}
-            </p>
-          )}
-
           <div className="space-y-1">
             <div className="flex justify-between text-sm">
               <span className="font-semibold">Lv. {level}</span>
@@ -119,11 +124,22 @@ export default function GamePage() {
               />
             </div>
           </div>
+
+          <button
+            onClick={() => setShowJobSelect((v) => !v)}
+            className="w-full rounded-lg border border-gray-700 py-2 text-sm text-gray-300 hover:border-indigo-500 hover:text-white transition-colors"
+          >
+            {showJobSelect ? "閉じる" : "職業を変更する"}
+          </button>
+
+          {showJobSelect && (
+            <JobClassSelector current={jobClass} onChange={handleJobChange} />
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "総タスク", value: stats.totalTasks },
+            { label: "総タスク",   value: stats.totalTasks },
             { label: "完了タスク", value: stats.completedTasks },
             { label: "総ポイント", value: stats.totalPoints },
           ].map((s) => (
