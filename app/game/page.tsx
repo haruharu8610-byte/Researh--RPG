@@ -17,6 +17,10 @@ type Stats = {
 
 const JOB_KEY = "rpg_job_class";
 
+// 自習1分 = 1EXP（タスクポイントと合算）
+function totalPoints(stats: Stats) {
+  return (stats.totalPoints ?? 0) + (stats.studyTotalMinutes ?? 0);
+}
 function calcLevel(points: number) { return Math.floor(points / 100) + 1; }
 function calcExp(points: number) { return points % 100; }
 
@@ -56,7 +60,7 @@ export default function GamePage() {
     const msgs: string[] = [];
     if (loginGold > 0) msgs.push(`ログインボーナス +${loginGold}G！`);
     if (taskGold  > 0) msgs.push(`タスク完了ボーナス +${taskGold}G！`);
-    if (studyGold > 0) msgs.push(`自習ボーナス +${studyGold}G！📚`);
+    if (studyGold > 0) msgs.push(`自習ボーナス +${studyGold}G +${studyGold}EXP！📚`);
     if (msgs.length) {
       setBonusMsg(msgs.join("　"));
       setTimeout(() => setBonusMsg(null), 4000);
@@ -100,8 +104,9 @@ export default function GamePage() {
   if (error) return <div className="flex min-h-screen items-center justify-center text-red-400">{error}</div>;
   if (!stats) return <div className="flex min-h-screen items-center justify-center text-gray-400">読み込み中...</div>;
 
-  const level = calcLevel(stats.totalPoints);
-  const exp   = calcExp(stats.totalPoints);
+  const pts   = totalPoints(stats);
+  const level = calcLevel(pts);
+  const exp   = calcExp(pts);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
@@ -128,6 +133,14 @@ export default function GamePage() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold tracking-wide">⚔️ Research RPG</h1>
           <div className="flex items-center gap-3">
+            <a
+              href="https://research-task-manager-one.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-700 rounded-lg px-2 py-1 transition-colors"
+            >
+              📋 タスクマネージャー
+            </a>
             <span className="text-yellow-400 font-bold text-sm">💰 {gold}G</span>
             <button onClick={handleLogout} className="text-xs text-gray-500 hover:text-gray-300">ログアウト</button>
           </div>
