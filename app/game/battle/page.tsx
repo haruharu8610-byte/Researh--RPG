@@ -23,14 +23,21 @@ const COMMANDS = [
 ] as const;
 type CommandId = (typeof COMMANDS)[number]["id"];
 
-function HpBar({ current, max, color }: { current: number; max: number; color: string }) {
-  const pct = Math.max(0, Math.round((current / max) * 100));
+function HpBar({ current, max, color, blocks = 20 }: { current: number; max: number; color: string; blocks?: number }) {
+  const filled = Math.max(0, Math.round((current / max) * blocks));
   return (
     <div className="flex items-center gap-2">
-      <div className="h-3 flex-1 rounded-full bg-gray-700">
-        <div className={`h-3 rounded-full transition-all duration-300 ${color}`} style={{ width: `${pct}%` }} />
+      <div className="flex gap-px">
+        {Array.from({ length: blocks }).map((_, i) => (
+          <div
+            key={i}
+            className={`h-4 w-3 border border-gray-600 transition-colors duration-200 ${
+              i < filled ? color : "bg-gray-800"
+            }`}
+          />
+        ))}
       </div>
-      <span className="w-20 text-right text-xs tabular-nums">{current}/{max}</span>
+      <span className="w-16 text-right text-xs tabular-nums text-gray-300">{current}/{max}</span>
     </div>
   );
 }
@@ -252,7 +259,7 @@ export default function BattlePage() {
             <span className="text-sm font-bold text-yellow-300">{enemy.name}</span>
             <span className="text-xs text-gray-400">HP</span>
           </div>
-          <HpBar current={enemyHp} max={enemy.maxHp} color="bg-red-500" />
+          <HpBar current={enemyHp} max={enemy.maxHp} color="bg-red-500" blocks={16} />
           <div className="flex justify-center mt-3">
             <EnemySprite shape={enemy.shape} color={enemy.color} shake={shakeEnemy} />
           </div>
@@ -304,11 +311,15 @@ export default function BattlePage() {
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs">
-              <span className="w-6 text-green-400">HP</span>
-              <HpBar current={playerHp} max={player.maxHp} color={playerHp < player.maxHp * 0.3 ? "bg-red-500" : "bg-green-500"} />
+              <span className="w-6 text-green-400 font-bold">HP</span>
+              <HpBar
+                current={playerHp}
+                max={player.maxHp}
+                color={playerHp < player.maxHp * 0.3 ? "bg-red-500" : playerHp < player.maxHp * 0.6 ? "bg-yellow-500" : "bg-green-500"}
+              />
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <span className="w-6 text-blue-400">MP</span>
+              <span className="w-6 text-blue-400 font-bold">MP</span>
               <HpBar current={playerMp} max={player.maxMp} color="bg-blue-500" />
             </div>
           </div>
