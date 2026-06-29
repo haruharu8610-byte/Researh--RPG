@@ -1033,7 +1033,15 @@ export default function BattlePage() {
           {phase === "select"         && <p className="text-yellow-200 font-medium">コマンドを選んでください</p>}
           {phase === "targeting"      && <p className="text-yellow-200 font-medium">← → でターゲット選択　Enterで決定</p>}
           {phase === "ally_targeting" && <p className="text-yellow-200 font-medium">← → で味方選択　Enterで決定</p>}
-          {phase === "spells"         && <p className="text-yellow-200 font-medium">まほうを選んでください　Escでもどる</p>}
+          {(phase === "targeting" || phase === "ally_targeting") && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setPhase("spells"); }}
+              className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors mt-1"
+            >
+              ← まほう選択にもどる
+            </button>
+          )}
+          {phase === "spells"         && <p className="text-yellow-200 font-medium">まほうを選んでください</p>}
         </div>
 
         {/* コマンド */}
@@ -1062,35 +1070,61 @@ export default function BattlePage() {
         {/* 呪文選択 */}
         {phase === "spells" && (
           <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
-            <div className="text-xs text-gray-200 mb-2 font-bold">まほう選択　Escでもどる</div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-200 font-bold">まほう選択</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setPhase("select"); }}
+                className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors"
+              >
+                ← もどる
+              </button>
+            </div>
+            {/* 属性相関図 */}
+            <div className="mb-2 rounded bg-gray-900 border border-gray-700 px-2 py-1.5 text-[10px] text-gray-400 leading-relaxed">
+              <span className="text-gray-300 font-bold mr-1">属性:</span>
+              🔥火→🌪️風 💧水→🔥火 🌪️風→🌍土 🌍土→💧水
+              <span className="ml-1 text-green-400">（→有利×2）</span>
+              <span className="text-red-400 ml-1">（逆は×0.5）</span>
+            </div>
             <div className="space-y-1 max-h-44 overflow-y-auto">
-              {spells.map((sp, i) => (
-                <button
-                  key={sp.id}
-                  onClick={(ev) => {
-                    ev.stopPropagation(); setSpellIdx(i);
-                    pendingAction.current = { type: "spell", spell: sp };
-                    if (sp.target === "all" || sp.target === "all_allies") executeAction(enemies);
-                    else if (sp.target === "single_ally") { setAllyTargetIdx(0); setPhase("ally_targeting"); }
-                    else setPhase("targeting");
-                  }}
-                  onMouseEnter={() => setSpellIdx(i)}
-                  className={`w-full flex justify-between rounded px-3 py-2 text-sm ${
-                    spellIdx === i ? "bg-yellow-400 text-gray-900 font-bold" : "bg-gray-700 text-white"
-                  }`}
-                >
-                  <span>
-                    {spellIdx === i ? "▶ " : ""}
-                    {sp.name}{" "}
-                    {sp.allyEffect ? "⚡速↑" : sp.effect ? STATUS_LABEL[sp.effect.status] : ELEMENT_LABEL[sp.element]}
-                  </span>
-                  <span className="text-xs opacity-80">
-                    MP{sp.mpCost}
-                    {sp.target === "all" || sp.target === "all_allies" ? "全体" :
-                     sp.target === "single_ally" ? "味方単" : "単体"}
-                  </span>
-                </button>
-              ))}
+              {spells.map((sp, i) => {
+                // 選択中の敵に対する有利・不利を計算
+                const targetEnemy = enemies[targetIdx] ?? enemies[0];
+                const eff = (sp.element !== "none" && !sp.allyEffect && !sp.effect && targetEnemy)
+                  ? getEffectiveness(sp.element, targetEnemy.element)
+                  : 1;
+                const effLabel = eff >= 2 ? <span className="text-green-400 font-bold ml-1">▲有利</span>
+                               : eff <= 0.5 ? <span className="text-red-400 font-bold ml-1">▼不利</span>
+                               : null;
+                return (
+                  <button
+                    key={sp.id}
+                    onClick={(ev) => {
+                      ev.stopPropagation(); setSpellIdx(i);
+                      pendingAction.current = { type: "spell", spell: sp };
+                      if (sp.target === "all" || sp.target === "all_allies") executeAction(enemies);
+                      else if (sp.target === "single_ally") { setAllyTargetIdx(0); setPhase("ally_targeting"); }
+                      else setPhase("targeting");
+                    }}
+                    onMouseEnter={() => setSpellIdx(i)}
+                    className={`w-full flex justify-between rounded px-3 py-2 text-sm ${
+                      spellIdx === i ? "bg-yellow-400 text-gray-900 font-bold" : "bg-gray-700 text-white"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1">
+                      {spellIdx === i ? "▶ " : ""}
+                      {sp.name}{" "}
+                      {sp.allyEffect ? "⚡速↑" : sp.effect ? STATUS_LABEL[sp.effect.status] : ELEMENT_LABEL[sp.element]}
+                      {effLabel}
+                    </span>
+                    <span className="text-xs opacity-80">
+                      MP{sp.mpCost}
+                      {sp.target === "all" || sp.target === "all_allies" ? "全体" :
+                       sp.target === "single_ally" ? "味方単" : "単体"}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1098,7 +1132,15 @@ export default function BattlePage() {
         {/* 味方ターゲット選択 */}
         {phase === "ally_targeting" && (
           <div className="rounded-xl border-2 border-yellow-700 bg-yellow-950/30 p-3">
-            <div className="text-xs text-yellow-200 mb-2 font-bold">味方を選ぶ　Escでもどる</div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-yellow-200 font-bold">味方を選ぶ</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setPhase("spells"); }}
+                className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors"
+              >
+                ← もどる
+              </button>
+            </div>
             <div className="space-y-1">
               {allyList.map((ally, i) => (
                 <button
