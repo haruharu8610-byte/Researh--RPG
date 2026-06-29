@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import GameCanvas, { type JobClass } from "@/components/GameCanvas";
 import JobClassSelector from "@/components/JobClassSelector";
 import { checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold } from "@/lib/gold";
+import { getEquippedWeapon, getEquippedArmor } from "@/lib/equipment";
 
 type Stats = {
   totalTasks: number;
@@ -32,11 +33,15 @@ export default function GamePage() {
   const [celebration, setCelebration] = useState<string | null>(null);
   const [gold, setGold] = useState(0);
   const [bonusMsg, setBonusMsg] = useState<string | null>(null);
+  const [equippedWeaponId, setEquippedWeaponId] = useState<string | null>(null);
+  const [equippedArmorId,  setEquippedArmorId]  = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const saved = localStorage.getItem(JOB_KEY) as JobClass | null;
     if (saved) setJobClass(saved);
+    setEquippedWeaponId(getEquippedWeapon()?.id ?? null);
+    setEquippedArmorId(getEquippedArmor()?.id ?? null);
   }, []);
 
   function handleJobChange(j: JobClass) {
@@ -147,7 +152,12 @@ export default function GamePage() {
         </div>
 
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6 space-y-4">
-          <GameCanvas level={level} jobClass={jobClass} />
+          <GameCanvas
+            level={level}
+            jobClass={jobClass}
+            weaponId={equippedWeaponId}
+            armorId={equippedArmorId}
+          />
 
           <div className="space-y-1">
             <div className="flex justify-between text-sm">

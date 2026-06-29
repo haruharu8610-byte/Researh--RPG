@@ -20,138 +20,183 @@ const JOB_LABEL: Record<JobClass, string> = {
   rogue:   "盗賊",
 };
 
+// ── 装備ビジュアル定義 ──────────────────────────────────────────
+
+/** 武器IDから (武器色メイン, 武器色アクセント) を返す */
+export function weaponColors(weaponId: string | null): [string, string] {
+  switch (weaponId) {
+    case "wooden_sword":   return ["#a16207", "#78350f"];
+    case "bronze_knife":   return ["#d97706", "#92400e"];
+    case "iron_sword":     return ["#9ca3af", "#6b7280"];
+    case "battle_axe":     return ["#6b7280", "#374151"];
+    case "steel_sword":    return ["#e5e7eb", "#9ca3af"];
+    case "wind_spear":     return ["#bae6fd", "#7dd3fc"];
+    case "magic_staff":    return ["#a78bfa", "#7c3aed"];
+    case "holy_staff":     return ["#fde68a", "#f59e0b"];
+    case "thunder_blade":  return ["#fbbf24", "#d97706"];
+    case "dark_blade":     return ["#374151", "#1e293b"];
+    case "dragon_sword":   return ["#dc2626", "#991b1b"];
+    case "sage_staff":     return ["#d1fae5", "#6ee7b7"];
+    case "craft_wind_staff":    return ["#bae6fd", "#38bdf8"];
+    case "craft_dragon_fang":   return ["#dc2626", "#7f1d1d"];
+    case "craft_chaos_blade":   return ["#a78bfa", "#4c1d95"];
+    case "craft_legend_sword":  return ["#fbbf24", "#d97706"];
+    case "craft_bone_blade":    return ["#e5e7eb", "#9ca3af"];
+    case "craft_wolf_claw":     return ["#d1d5db", "#6b7280"];
+    case "craft_dark_staff":    return ["#1e293b", "#374151"];
+    case "craft_angel_sword":   return ["#fef9c3", "#fde68a"];
+    default:               return ["#92400e", "#78350f"]; // 素手
+  }
+}
+
+/** 防具IDから (体色メイン, 体色シャドウ) を返す */
+export function armorColors(armorId: string | null, jobClass: JobClass): [string, string] {
+  switch (armorId) {
+    case "cloth_robe":     return ["#e5e7eb", "#9ca3af"];
+    case "leather_armor":  return ["#a16207", "#78350f"];
+    case "bronze_shield":  return ["#d97706", "#92400e"];
+    case "chain_mail":     return ["#6b7280", "#374151"];
+    case "wind_cloak":     return ["#0ea5e9", "#0369a1"];
+    case "iron_armor":     return ["#4b5563", "#1f2937"];
+    case "magic_robe":     return ["#7c3aed", "#4c1d95"];
+    case "mystic_robe":    return ["#4c1d95", "#2e1065"];
+    case "silver_armor":   return ["#cbd5e1", "#94a3b8"];
+    case "dragon_armor":   return ["#991b1b", "#7f1d1d"];
+    case "sage_robe":      return ["#d97706", "#92400e"];
+    case "craft_shell_armor":    return ["#d97706", "#92400e"];
+    case "craft_golem_shield":   return ["#374151", "#1f2937"];
+    case "craft_resist_robe":    return ["#4c1d95", "#2e1065"];
+    case "craft_legend_armor":   return ["#b45309", "#78350f"];
+    case "craft_ghost_cloak":    return ["#6d28d9", "#4c1d95"];
+    case "craft_angel_robe":     return ["#fef3c7", "#fde68a"];
+    default: {
+      // 職業デフォルト
+      const defaults: Record<JobClass, [string, string]> = {
+        warrior: ["#dc2626", "#991b1b"],
+        mage:    ["#7c3aed", "#4c1d95"],
+        cleric:  ["#f0fdf4", "#d1fae5"],
+        rogue:   ["#166534", "#14532d"],
+      };
+      return defaults[jobClass];
+    }
+  }
+}
+
+// ── ピクセルスプライト定義（B=体色, b=体影, W=武器色, w=武器アクセント） ──
+
 type PixelDef = Record<string, string>;
 type SpriteData = { grid: string[]; colors: PixelDef };
 
-// 16×20 グリッド、4px/ピクセル → 64×80 キャンバス
-const PLAYER_SPRITES: Record<JobClass, SpriteData> = {
-  warrior: {
-    grid: [
-      "................",  // 0
-      "......KGGGK.....",  // 1  兜
-      ".....KGGGGGK....",  // 2
-      ".....KGssssK....",  // 3  顔
-      ".....KGsEEsK....",  // 4  目
-      ".....KGssssK....",  // 5
-      "......KGGGK.....",  // 6
-      "...WWRRRRRRRR...",  // 7  体（W=剣柄）
-      "...WWRRRRRRRR...",  // 8
-      "...WWRRRRRRRR...",  // 9
-      "....WRRRRRRR....",  // 10
-      "....KRRLLLLK....",  // 11 腰
-      ".....KLLkLLK....",  // 12 足
-      ".....KLLkLLK....",  // 13
-      ".....KTTkTTK....",  // 14 ブーツ
-      "......KKkKK.....",  // 15
-      "................",  // 16
-      "..W.............",  // 17 剣先
-      "..W.............",  // 18
-      "................",  // 19
-    ],
-    colors: {
-      K: "#374151", G: "#9ca3af", s: "#fcd9b0", E: "#1e293b",
-      R: "#dc2626", W: "#e5e7eb", L: "#1d4ed8", T: "#78350f",
-      k: "#1e3a8a",
-    },
-  },
+function makeSprite(jobClass: JobClass, weaponId: string | null, armorId: string | null): SpriteData {
+  const [W, w] = weaponColors(weaponId);
+  const [B, b] = armorColors(armorId, jobClass);
 
-  mage: {
-    grid: [
-      "......PPP.......",  // 0  帽子先端
-      ".....PPPPP......",  // 1
-      "....PPPPPPP.....",  // 2
-      ".....PsssssP....",  // 3  顔
-      ".....PsEEssP....",  // 4  目
-      ".....PssssP.....",  // 5
-      "....PPPPPPPP....",  // 6  帽つば
-      "S...MMMMMMMMM...",  // 7  体（S=杖）
-      "S...MMMMMMMMM...",  // 8
-      "S...MMMMMMMMM...",  // 9
-      "S...MMMMMMMMM...",  // 10
-      "S....MMMMMMM....",  // 11
-      "S....MMMkMMM....",  // 12 足
-      "S....MMMkMMM....",  // 13
-      "O....DTTkTTD....",  // 14 ブーツ
-      "S.....KKkKK.....",  // 15
-      "S...............",  // 16 杖
-      "S...............",  // 17
-      "O...............",  // 18 杖先（宝珠）
-      "................",  // 19
-    ],
-    colors: {
-      P: "#4c1d95", s: "#fcd9b0", E: "#1e293b",
-      M: "#7c3aed", k: "#2e1065",
-      S: "#d1d5db", O: "#a78bfa",
-      D: "#374151", T: "#78350f", K: "#1e293b",
+  const bases: Record<JobClass, SpriteData> = {
+    warrior: {
+      grid: [
+        "................",
+        "......KGGGK.....",
+        ".....KGGGGGK....",
+        ".....KGssssK....",
+        ".....KGsEEsK....",
+        ".....KGssssK....",
+        "......KGGGK.....",
+        "...WWBBBBBBbK...",
+        "...WWBBBBBBbK...",
+        "...WWBBBBBBbK...",
+        "....WBBBBBBbK...",
+        "....KBBLLLLbK...",
+        ".....KLLkLLK....",
+        ".....KLLkLLK....",
+        ".....KTTkTTK....",
+        "......KKkKK.....",
+        "..W.............",
+        "..w.............",
+        "................",
+        "................",
+      ],
+      colors: { K:"#1e293b", G:"#9ca3af", s:"#fcd9b0", E:"#1e293b", B, b, W, w, L:"#1d4ed8", k:"#1e3a8a", T:"#78350f" },
     },
-  },
-
-  cleric: {
-    grid: [
-      "................",  // 0
-      ".....YYYYYY.....",  // 1  頭巾
-      "....YYYYYYYYH...",  // 2
-      "....YYssssYYH...",  // 3  顔
-      "....YYsEEsYYH...",  // 4  目
-      "....YYssssYYH...",  // 5
-      ".....YYYYYYY....",  // 6
-      "...CWWWWWWWWW...",  // 7  体（C=十字架）
-      "...CWWWWWWWWW...",  // 8
-      "...CCWWWWWWWW...",  // 9  十字横棒
-      "....CWWWWWWW....",  // 10
-      ".....WLLLLLL....",  // 11
-      ".....WLLkLLL....",  // 12 足
-      ".....WLLkLLL....",  // 13
-      ".....TTTkTTT....",  // 14 ブーツ
-      "......KKkKKK....",  // 15
-      "....C...........",  // 16 杖延長
-      "....C...........",  // 17
-      "...CCC..........",  // 18 杖頭（十字）
-      "................",  // 19
-    ],
-    colors: {
-      Y: "#fef9c3", H: "#fde68a", s: "#fcd9b0", E: "#1e293b",
-      W: "#f0fdf4", C: "#f59e0b", L: "#d1fae5",
-      T: "#78350f", K: "#374151", k: "#4b5563",
+    mage: {
+      grid: [
+        "......PPP.......",
+        ".....PPPPP......",
+        "....PPPPPPP.....",
+        ".....PssssP.....",
+        ".....PsEEsP.....",
+        ".....PssssP.....",
+        "....PPPPPPPP....",
+        "W...BBBBBBBbK...",
+        "W...BBBBBBBbK...",
+        "W...BBBBBBBbK...",
+        "W...BBBBBBBbK...",
+        "W....BBBBBBb....",
+        ".....BBBkBBb....",
+        ".....BBBkBBb....",
+        "w....TTTkTTT....",
+        "W.....KKkKK.....",
+        "W...............",
+        "W...............",
+        "w...............",
+        "................",
+      ],
+      colors: { K:"#1e293b", P:"#4c1d95", s:"#fcd9b0", E:"#1e293b", B, b, W, w, k:"#2e1065", T:"#78350f" },
     },
-  },
-
-  rogue: {
-    grid: [
-      "................",  // 0
-      ".....DDDDD......",  // 1  フード
-      "....DDDDDDD.....",  // 2
-      "....DDssssD.....",  // 3  顔
-      "....DDsEEsD.....",  // 4  目（鋭い）
-      "....DDssssD.....",  // 5
-      ".....DDDDD......",  // 6
-      "..d.NNNNNNNNN...",  // 7  体（d=ダガー）
-      "..d.NNNNNNNNN...",  // 8
-      "..D.NNNNNNNNN...",  // 9
-      "...NNNNNNNNN....",  // 10
-      "....NNNkNNNN....",  // 11
-      "....NNNkNNN..d..",  // 12 足（右にもダガー）
-      "....NNNkNNN..d..",  // 13
-      "....TTTkTTT..D..",  // 14 ブーツ
-      ".....KKkKKK.....",  // 15
-      "..d.............",  // 16
-      "..D.............",  // 17
-      "................",  // 18
-      "................",  // 19
-    ],
-    colors: {
-      D: "#374151", s: "#fcd9b0", E: "#1e293b",
-      N: "#166534", k: "#14532d", d: "#9ca3af",
-      T: "#78350f", K: "#1e293b",
+    cleric: {
+      grid: [
+        "................",
+        ".....YYYYYYY....",
+        "....YYYYYYYYY...",
+        "....YYssssYYY...",
+        "....YYsEEsYYY...",
+        "....YYssssYYY...",
+        ".....YYYYYYY....",
+        "...W.BBBBBBbK...",
+        "...WWBBBBBBbK...",
+        "...W.BBBBBBbK...",
+        "....WBBBBBBbK...",
+        ".....BBBkBBb....",
+        ".....BBBkBBb....",
+        ".....BBBkBBb....",
+        "w....TTTkTTT....",
+        "W.....KKkKK.....",
+        "W...............",
+        "W...............",
+        "wWw.............",
+        "................",
+      ],
+      colors: { K:"#1e293b", Y:"#fef9c3", s:"#fcd9b0", E:"#1e293b", B, b, W, w, k:"#4b5563", T:"#78350f" },
     },
-  },
-};
+    rogue: {
+      grid: [
+        "................",
+        ".....DDDDD......",
+        "....DDDDDDD.....",
+        "....DDssssD.....",
+        "....DDsEEsD.....",
+        "....DDssssD.....",
+        ".....DDDDD......",
+        "..WwBBBBBBBb....",
+        "..WwBBBBBBBb....",
+        "..WwBBBBBBBb....",
+        "...BBBBBBBBb....",
+        "....BBBkBBb..Ww.",
+        "....BBBkBBb..Ww.",
+        "....BBBkBBb.....",
+        "....TTTkTTT.....",
+        ".....KKkKK......",
+        "..W.............",
+        "..w.............",
+        "................",
+        "................",
+      ],
+      colors: { K:"#1e293b", D:"#374151", s:"#fcd9b0", E:"#1e293b", B, b, W, w, k:"#14532d", T:"#78350f" },
+    },
+  };
+  return bases[jobClass];
+}
 
-function renderPlayerSprite(
-  ctx: CanvasRenderingContext2D,
-  sprite: SpriteData,
-  scale = 4
-) {
+function renderSprite(ctx: CanvasRenderingContext2D, sprite: SpriteData, scale = 4) {
   ctx.clearRect(0, 0, 64, 80);
   const { grid, colors } = sprite;
   for (let row = 0; row < grid.length; row++) {
@@ -164,11 +209,17 @@ function renderPlayerSprite(
   }
 }
 
-type Props = { level: number; jobClass: JobClass };
+// ── コンポーネント ──────────────────────────────────────────────
 
-export default function GameCanvas({ level, jobClass }: Props) {
+type Props = {
+  level: number;
+  jobClass: JobClass;
+  weaponId?: string | null;
+  armorId?: string | null;
+};
+
+export default function GameCanvas({ level, jobClass, weaponId = null, armorId = null }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const offsetRef = useRef(0);
   const rafRef    = useRef<number>(0);
 
   useEffect(() => {
@@ -178,34 +229,28 @@ export default function GameCanvas({ level, jobClass }: Props) {
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
 
-    const sprite = PLAYER_SPRITES[jobClass];
+    const sprite = makeSprite(jobClass, weaponId ?? null, armorId ?? null);
     let t = 0;
 
     function draw() {
       t += 0.04;
-      const bob = Math.sin(t) * 3; // 上下に揺れる
-      offsetRef.current = bob;
-
-      // 背景（グラデーション風）
+      const bob = Math.sin(t) * 3;
       ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
 
-      // 地面
       ctx!.fillStyle = "#374151";
       ctx!.fillRect(0, canvas!.height - 16, canvas!.width, 4);
 
-      // 影
       ctx!.fillStyle = "rgba(0,0,0,0.25)";
       ctx!.beginPath();
       ctx!.ellipse(canvas!.width / 2, canvas!.height - 14, 28, 6, 0, 0, Math.PI * 2);
       ctx!.fill();
 
-      // スプライト（bob分オフセット）
       ctx!.save();
       ctx!.translate(
         Math.floor((canvas!.width - 64) / 2),
         Math.floor(canvas!.height - 80 - 14 + bob)
       );
-      renderPlayerSprite(ctx!, sprite);
+      renderSprite(ctx!, sprite);
       ctx!.restore();
 
       rafRef.current = requestAnimationFrame(draw);
@@ -213,17 +258,14 @@ export default function GameCanvas({ level, jobClass }: Props) {
 
     draw();
     return () => cancelAnimationFrame(rafRef.current);
-  }, [jobClass]);
+  }, [jobClass, weaponId, armorId]);
 
   const label = JOB_LABEL[jobClass];
-
-  // Lv10以上は金色オーラ演出（CSS）
-  const aura = level >= 10 ? "shadow-[0_0_18px_4px_rgba(251,191,36,0.45)]" : "";
+  const aura  = level >= 10 ? "shadow-[0_0_18px_4px_rgba(251,191,36,0.45)]" : "";
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div className={`rounded-xl overflow-hidden bg-gray-900 border border-gray-700 ${aura}`}>
-        {/* 名前バー */}
         <div className="flex items-center justify-center gap-2 px-4 pt-2 pb-1">
           <span className="text-yellow-300 font-bold text-sm font-mono">Lv.{level}</span>
           <span className="text-gray-300 text-sm">{label}</span>
