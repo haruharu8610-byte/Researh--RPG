@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { COMPANIONS, getParty, addPartyMember, removePartyMember, isInParty, type PartyMemberData } from "@/lib/party";
