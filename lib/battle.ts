@@ -34,16 +34,23 @@ export const ELEMENT_LABEL: Record<Element, string> = {
 // ── 呪文 ────────────────────────────────────────────────────
 export type SpellEffectDef = {
   status: StatusEffect;
-  baseChance: number; // 基本成功率（耐性差し引き前）
+  baseChance: number;
+  turns: number;
+};
+
+export type SpellAllyEffect = {
+  type: "speed_up";
+  factor: number; // e.g. 1.5 = +50%
   turns: number;
 };
 
 export type Spell = {
   id: string; name: string; element: Element;
   power: number; mpCost: number; minLevel: number;
-  target: "single" | "all";
+  target: "single" | "all" | "single_ally" | "all_allies";
   lineId: string;
-  effect?: SpellEffectDef; // 状態異常付与
+  effect?: SpellEffectDef;     // 状態異常（敵対象）
+  allyEffect?: SpellAllyEffect; // バフ（味方対象）
 };
 
 export const SPELLS: Spell[] = [
@@ -84,6 +91,15 @@ export const SPELLS: Spell[] = [
   // ⚡ 麻痺ライン
   { id: "mahi",      name: "まひこうげき",element: "none",  power: 0,   mpCost: 7,  minLevel: 5,  target: "single", lineId: "paralysis",
     effect: { status: "paralysis", baseChance: 0.62, turns: 5 } },
+
+  // 💊 回復ライン（自分 or 単体味方）
+  { id: "keal",      name: "ケアル",     element: "none",  power: 0,   mpCost: 4,  minLevel: 1,  target: "single_ally", lineId: "heal" },
+  { id: "kealla",    name: "ケアルラ",   element: "none",  power: 0,   mpCost: 9,  minLevel: 6,  target: "single_ally", lineId: "heal" },
+  { id: "behomi",    name: "ベホイミ",   element: "none",  power: 0,   mpCost: 14, minLevel: 11, target: "all_allies",  lineId: "heal" },
+
+  // ⚡ 素早さ強化ライン
+  { id: "piorimu",   name: "ピオリム",   element: "none",  power: 0,   mpCost: 7,  minLevel: 4,  target: "all_allies",  lineId: "speed",
+    allyEffect: { type: "speed_up", factor: 1.6, turns: 3 } },
 ];
 
 /** 各ラインの最高ティアのみ返す */
@@ -118,7 +134,8 @@ export type EnemyType = {
   color: number; shape: EnemyShape; element: Element;
   physResist: number;
   magicResist: number;
-  statusResist: Record<StatusEffect, number>; // 0〜1（0=無効, 1=確実にかかる）
+  speed: number; // 素早さ
+  statusResist: Record<StatusEffect, number>;
   spellIds: string[];
 };
 
@@ -127,7 +144,7 @@ export const ENEMIES: EnemyType[] = [
     id: "slime", name: "スライム", maxHp: 12, attack: 4, defense: 1, magic: 0,
     expReward: 5, goldReward: 8, minLevel: 1,
     color: 0x3b82f6, shape: "slime", element: "water",
-    physResist: 1, magicResist: 1,
+    physResist: 1, magicResist: 1, speed: 7,
     statusResist: { poison: 0.3, paralysis: 0.3, sleep: 0.2, confuse: 0.2 },
     spellIds: [],
   },
@@ -135,7 +152,7 @@ export const ENEMIES: EnemyType[] = [
     id: "bat", name: "ドラキー", maxHp: 22, attack: 8, defense: 2, magic: 10,
     expReward: 12, goldReward: 15, minLevel: 1,
     color: 0x7c3aed, shape: "bat", element: "wind",
-    physResist: 1, magicResist: 1,
+    physResist: 1, magicResist: 1, speed: 18,
     statusResist: { poison: 0.4, paralysis: 0.4, sleep: 0.3, confuse: 0.3 },
     spellIds: ["bagi", "manusa"], // プレイヤーに混乱をかけてくる
   },
@@ -143,7 +160,7 @@ export const ENEMIES: EnemyType[] = [
     id: "scorpion", name: "おおさそり", maxHp: 40, attack: 14, defense: 6, magic: 0,
     expReward: 28, goldReward: 35, minLevel: 3,
     color: 0xd97706, shape: "scorpion", element: "earth",
-    physResist: 1, magicResist: 1,
+    physResist: 1, magicResist: 1, speed: 12,
     statusResist: { poison: 0.9, paralysis: 0.5, sleep: 0.4, confuse: 0.5 }, // 毒ほぼ無効（自分が毒持ち）
     spellIds: ["dokudoku"], // 毒をかけてくる
   },
@@ -151,7 +168,7 @@ export const ENEMIES: EnemyType[] = [
     id: "golem", name: "ゴーレム", maxHp: 70, attack: 22, defense: 14, magic: 8,
     expReward: 55, goldReward: 70, minLevel: 5,
     color: 0x6b7280, shape: "golem", element: "earth",
-    physResist: 0.25, magicResist: 1,
+    physResist: 0.25, magicResist: 1, speed: 4,
     statusResist: { poison: 1.0, paralysis: 0.9, sleep: 0.9, confuse: 0.6 }, // 石→毒・麻痺ほぼ無効
     spellIds: ["gira"],
   },
@@ -159,7 +176,7 @@ export const ENEMIES: EnemyType[] = [
     id: "dragon", name: "ドラゴン", maxHp: 130, attack: 38, defense: 22, magic: 30,
     expReward: 110, goldReward: 150, minLevel: 8,
     color: 0xdc2626, shape: "dragon", element: "fire",
-    physResist: 1, magicResist: 0.45,
+    physResist: 1, magicResist: 0.45, speed: 13,
     statusResist: { poison: 0.8, paralysis: 0.8, sleep: 0.85, confuse: 0.7 }, // 竜→全体的に高耐性
     spellIds: ["merazoma", "rariho"], // 眠りをかけてくる
   },
@@ -197,7 +214,15 @@ export type PlayerStats = {
   level: number; jobClass: JobClass;
   maxHp: number; maxMp: number;
   attack: number; defense: number; magic: number;
-  statusResist: number; // 0〜1（防具込みの状態異常耐性）
+  speed: number;
+  statusResist: number;
+};
+
+export const JOB_BASE_SPEED: Record<JobClass, number> = {
+  warrior: 9,
+  mage:    11,
+  cleric:  8,
+  rogue:   16,
 };
 
 export function calcPlayerStats(
@@ -211,7 +236,8 @@ export function calcPlayerStats(
     attack:   5 + level * 3 + weaponAtk,
     defense:  3 + level * 2 + armorDef,
     magic:    3 + level * 2 + weaponMag + armorMag,
-    statusResist: Math.min(0.95, 0.5 + armorStatusResist), // 素50%、最大95%
+    speed:    JOB_BASE_SPEED[jobClass] + Math.floor(level * 0.5),
+    statusResist: Math.min(0.95, 0.5 + armorStatusResist),
   };
   if (jobClass === "warrior") { s.attack += 6; s.defense += 4; s.maxHp += 10; }
   if (jobClass === "mage")    { s.magic  += 12 + level * 3; s.maxMp += 15 + level * 3; }

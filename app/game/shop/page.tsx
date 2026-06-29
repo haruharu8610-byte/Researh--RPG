@@ -133,6 +133,7 @@ export default function ShopPage() {
                       {item.attackBonus  ? `ATK+${item.attackBonus} `  : ""}
                       {item.defenseBonus ? `DEF+${item.defenseBonus} ` : ""}
                       {item.magicBonus   ? `MAG+${item.magicBonus} `   : ""}
+                      {item.statusResist ? `耐性+${Math.round(item.statusResist*100)}% ` : ""}
                       {item.hpRestore    ? `HP+${item.hpRestore} `     : ""}
                       {item.mpRestore    ? `MP+${item.mpRestore} `     : ""}
                     </div>
