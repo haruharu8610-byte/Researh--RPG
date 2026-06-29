@@ -28,7 +28,7 @@ export default function JobClassSelector({ current, onChange }: Props) {
           }`}
         >
           <div className="text-xl">{job.emoji}</div>
-          <div className="mt-1 text-sm font-semibold">{job.label}</div>
+          <div className="mt-1 text-sm font-semibold text-white">{job.label}</div>
           <div className="text-xs text-gray-400">{job.desc}</div>
         </button>
       ))}
