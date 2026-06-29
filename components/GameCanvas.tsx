@@ -2,16 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-type Props = { level: number; jobClass: JobClass };
-
 export type JobClass = "warrior" | "mage" | "cleric" | "rogue";
-
-const JOB_CONFIG: Record<JobClass, { color: number; label: string; emoji: string }> = {
-  warrior: { color: 0xe74c3c, label: "戦士",   emoji: "⚔️" },
-  mage:    { color: 0x9b59b6, label: "魔法使い", emoji: "🔮" },
-  cleric:  { color: 0xf1c40f, label: "僧侶",   emoji: "✨" },
-  rogue:   { color: 0x2ecc71, label: "盗賊",   emoji: "🗡️" },
-};
 
 export function themeToJobClass(theme: string | null): JobClass {
   if (!theme) return "warrior";
@@ -22,87 +13,229 @@ export function themeToJobClass(theme: string | null): JobClass {
   return "warrior";
 }
 
+const JOB_LABEL: Record<JobClass, string> = {
+  warrior: "戦士",
+  mage:    "魔法使い",
+  cleric:  "僧侶",
+  rogue:   "盗賊",
+};
+
+type PixelDef = Record<string, string>;
+type SpriteData = { grid: string[]; colors: PixelDef };
+
+// 16×20 グリッド、4px/ピクセル → 64×80 キャンバス
+const PLAYER_SPRITES: Record<JobClass, SpriteData> = {
+  warrior: {
+    grid: [
+      "................",  // 0
+      "......KGGGK.....",  // 1  兜
+      ".....KGGGGGK....",  // 2
+      ".....KGssssK....",  // 3  顔
+      ".....KGsEEsK....",  // 4  目
+      ".....KGssssK....",  // 5
+      "......KGGGK.....",  // 6
+      "...WWRRRRRRRR...",  // 7  体（W=剣柄）
+      "...WWRRRRRRRR...",  // 8
+      "...WWRRRRRRRR...",  // 9
+      "....WRRRRRRR....",  // 10
+      "....KRRLLLLK....",  // 11 腰
+      ".....KLLkLLK....",  // 12 足
+      ".....KLLkLLK....",  // 13
+      ".....KTTkTTK....",  // 14 ブーツ
+      "......KKkKK.....",  // 15
+      "................",  // 16
+      "..W.............",  // 17 剣先
+      "..W.............",  // 18
+      "................",  // 19
+    ],
+    colors: {
+      K: "#374151", G: "#9ca3af", s: "#fcd9b0", E: "#1e293b",
+      R: "#dc2626", W: "#e5e7eb", L: "#1d4ed8", T: "#78350f",
+      k: "#1e3a8a",
+    },
+  },
+
+  mage: {
+    grid: [
+      "......PPP.......",  // 0  帽子先端
+      ".....PPPPP......",  // 1
+      "....PPPPPPP.....",  // 2
+      ".....PsssssP....",  // 3  顔
+      ".....PsEEssP....",  // 4  目
+      ".....PssssP.....",  // 5
+      "....PPPPPPPP....",  // 6  帽つば
+      "S...MMMMMMMMM...",  // 7  体（S=杖）
+      "S...MMMMMMMMM...",  // 8
+      "S...MMMMMMMMM...",  // 9
+      "S...MMMMMMMMM...",  // 10
+      "S....MMMMMMM....",  // 11
+      "S....MMMkMMM....",  // 12 足
+      "S....MMMkMMM....",  // 13
+      "O....DTTkTTD....",  // 14 ブーツ
+      "S.....KKkKK.....",  // 15
+      "S...............",  // 16 杖
+      "S...............",  // 17
+      "O...............",  // 18 杖先（宝珠）
+      "................",  // 19
+    ],
+    colors: {
+      P: "#4c1d95", s: "#fcd9b0", E: "#1e293b",
+      M: "#7c3aed", k: "#2e1065",
+      S: "#d1d5db", O: "#a78bfa",
+      D: "#374151", T: "#78350f", K: "#1e293b",
+    },
+  },
+
+  cleric: {
+    grid: [
+      "................",  // 0
+      ".....YYYYYY.....",  // 1  頭巾
+      "....YYYYYYYYH...",  // 2
+      "....YYssssYYH...",  // 3  顔
+      "....YYsEEsYYH...",  // 4  目
+      "....YYssssYYH...",  // 5
+      ".....YYYYYYY....",  // 6
+      "...CWWWWWWWWW...",  // 7  体（C=十字架）
+      "...CWWWWWWWWW...",  // 8
+      "...CCWWWWWWWW...",  // 9  十字横棒
+      "....CWWWWWWW....",  // 10
+      ".....WLLLLLL....",  // 11
+      ".....WLLkLLL....",  // 12 足
+      ".....WLLkLLL....",  // 13
+      ".....TTTkTTT....",  // 14 ブーツ
+      "......KKkKKK....",  // 15
+      "....C...........",  // 16 杖延長
+      "....C...........",  // 17
+      "...CCC..........",  // 18 杖頭（十字）
+      "................",  // 19
+    ],
+    colors: {
+      Y: "#fef9c3", H: "#fde68a", s: "#fcd9b0", E: "#1e293b",
+      W: "#f0fdf4", C: "#f59e0b", L: "#d1fae5",
+      T: "#78350f", K: "#374151", k: "#4b5563",
+    },
+  },
+
+  rogue: {
+    grid: [
+      "................",  // 0
+      ".....DDDDD......",  // 1  フード
+      "....DDDDDDD.....",  // 2
+      "....DDssssD.....",  // 3  顔
+      "....DDsEEsD.....",  // 4  目（鋭い）
+      "....DDssssD.....",  // 5
+      ".....DDDDD......",  // 6
+      "..d.NNNNNNNNN...",  // 7  体（d=ダガー）
+      "..d.NNNNNNNNN...",  // 8
+      "..D.NNNNNNNNN...",  // 9
+      "...NNNNNNNNN....",  // 10
+      "....NNNkNNNN....",  // 11
+      "....NNNkNNN..d..",  // 12 足（右にもダガー）
+      "....NNNkNNN..d..",  // 13
+      "....TTTkTTT..D..",  // 14 ブーツ
+      ".....KKkKKK.....",  // 15
+      "..d.............",  // 16
+      "..D.............",  // 17
+      "................",  // 18
+      "................",  // 19
+    ],
+    colors: {
+      D: "#374151", s: "#fcd9b0", E: "#1e293b",
+      N: "#166534", k: "#14532d", d: "#9ca3af",
+      T: "#78350f", K: "#1e293b",
+    },
+  },
+};
+
+function renderPlayerSprite(
+  ctx: CanvasRenderingContext2D,
+  sprite: SpriteData,
+  scale = 4
+) {
+  ctx.clearRect(0, 0, 64, 80);
+  const { grid, colors } = sprite;
+  for (let row = 0; row < grid.length; row++) {
+    for (let col = 0; col < grid[row].length; col++) {
+      const ch = grid[row][col];
+      if (ch === "." || !colors[ch]) continue;
+      ctx.fillStyle = colors[ch];
+      ctx.fillRect(col * scale, row * scale, scale, scale);
+    }
+  }
+}
+
+type Props = { level: number; jobClass: JobClass };
+
 export default function GameCanvas({ level, jobClass }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const gameRef = useRef<import("phaser").Game | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const offsetRef = useRef(0);
+  const rafRef    = useRef<number>(0);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    let game: import("phaser").Game;
-    const { color, label } = JOB_CONFIG[jobClass];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
 
-    import("phaser").then((Phaser) => {
-      if (gameRef.current) { gameRef.current.destroy(true); }
+    const sprite = PLAYER_SPRITES[jobClass];
+    let t = 0;
 
-      const config: import("phaser").Types.Core.GameConfig = {
-        type: Phaser.AUTO,
-        width: 400,
-        height: 220,
-        backgroundColor: "#111827",
-        parent: containerRef.current!,
-        scene: {
-          create(this: Phaser.Scene) {
-            this.add.rectangle(200, 200, 400, 8, 0x374151);
+    function draw() {
+      t += 0.04;
+      const bob = Math.sin(t) * 3; // 上下に揺れる
+      offsetRef.current = bob;
 
-            const x = 200, y = 160;
-            const g = this.add.graphics();
+      // 背景（グラデーション風）
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
 
-            g.fillStyle(0x000000, 0.3);
-            g.fillEllipse(x, y + 36, 40, 12);
+      // 地面
+      ctx!.fillStyle = "#374151";
+      ctx!.fillRect(0, canvas!.height - 16, canvas!.width, 4);
 
-            g.fillStyle(color, 1);
-            g.fillRect(x - 12, y, 24, 28);
-            g.fillRect(x - 10, y - 22, 20, 20);
+      // 影
+      ctx!.fillStyle = "rgba(0,0,0,0.25)";
+      ctx!.beginPath();
+      ctx!.ellipse(canvas!.width / 2, canvas!.height - 14, 28, 6, 0, 0, Math.PI * 2);
+      ctx!.fill();
 
-            g.fillStyle(0x000000, 1);
-            g.fillRect(x - 5, y - 16, 4, 4);
-            g.fillRect(x + 2, y - 16, 4, 4);
+      // スプライト（bob分オフセット）
+      ctx!.save();
+      ctx!.translate(
+        Math.floor((canvas!.width - 64) / 2),
+        Math.floor(canvas!.height - 80 - 14 + bob)
+      );
+      renderPlayerSprite(ctx!, sprite);
+      ctx!.restore();
 
-            // 職業ごとの装備
-            if (jobClass === "warrior") {
-              g.fillStyle(0xd1d5db, 1);
-              g.fillRect(x + 14, y - 10, 4, 30);
-              g.fillRect(x + 10, y + 2, 12, 4);
-            } else if (jobClass === "mage") {
-              g.fillStyle(0x8b5cf6, 1);
-              g.fillRect(x - 18, y - 30, 4, 50);
-              g.fillCircle(x - 16, y - 34, 7);
-            } else if (jobClass === "cleric") {
-              g.fillStyle(0xfef3c7, 1);
-              g.fillRect(x + 14, y - 12, 4, 24);
-              g.fillRect(x + 8, y - 8, 16, 4);
-            } else if (jobClass === "rogue") {
-              g.fillStyle(0x6b7280, 1);
-              g.fillRect(x + 14, y - 4, 3, 20);
-              g.fillRect(x + 14, y - 10, 3, 8);
-            }
+      rafRef.current = requestAnimationFrame(draw);
+    }
 
-            if (level >= 10) {
-              g.fillStyle(0xffd700, 1);
-              g.fillRect(x - 10, y - 28, 20, 6);
-              g.fillRect(x - 10, y - 34, 4, 8);
-              g.fillRect(x - 2, y - 36, 4, 10);
-              g.fillRect(x + 6, y - 34, 4, 8);
-            }
+    draw();
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [jobClass]);
 
-            this.add.text(200, 10, `Lv.${level} ${label}`, {
-              fontSize: "14px", color: "#e5e7eb", fontFamily: "monospace",
-            }).setOrigin(0.5, 0);
+  const label = JOB_LABEL[jobClass];
 
-            this.tweens.add({
-              targets: g, y: "-=6", duration: 1200,
-              yoyo: true, repeat: -1, ease: "Sine.easeInOut",
-            });
-          },
-        },
-      };
+  // Lv10以上は金色オーラ演出（CSS）
+  const aura = level >= 10 ? "shadow-[0_0_18px_4px_rgba(251,191,36,0.45)]" : "";
 
-      game = new Phaser.Game(config);
-      gameRef.current = game;
-    });
-
-    return () => { game?.destroy(true); };
-  }, [level, jobClass]);
-
-  return <div ref={containerRef} className="flex justify-center rounded-xl overflow-hidden" />;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className={`rounded-xl overflow-hidden bg-gray-900 border border-gray-700 ${aura}`}>
+        {/* 名前バー */}
+        <div className="flex items-center justify-center gap-2 px-4 pt-2 pb-1">
+          <span className="text-yellow-300 font-bold text-sm font-mono">Lv.{level}</span>
+          <span className="text-gray-300 text-sm">{label}</span>
+          {level >= 10 && <span className="text-xs text-yellow-400 animate-pulse">✨</span>}
+        </div>
+        <canvas
+          ref={canvasRef}
+          width={160}
+          height={120}
+          style={{ imageRendering: "pixelated", display: "block" }}
+        />
+      </div>
+    </div>
+  );
 }
