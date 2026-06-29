@@ -38,3 +38,15 @@ export function checkTaskBonus(completedCount: number): number {
   addGold(gold);
   return gold;
 }
+
+const LAST_STUDY_MINUTES_KEY = "rpg_last_study_minutes";
+
+/** 自習ボーナス。新たに増えた自習時間1分につき1G。 */
+export function checkStudyBonus(totalMinutes: number): number {
+  const last = parseInt(localStorage.getItem(LAST_STUDY_MINUTES_KEY) ?? "0", 10);
+  if (totalMinutes <= last) return 0;
+  const diff = totalMinutes - last;
+  localStorage.setItem(LAST_STUDY_MINUTES_KEY, String(totalMinutes));
+  addGold(diff);
+  return diff;
+}

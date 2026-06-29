@@ -5,13 +5,14 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import GameCanvas, { type JobClass } from "@/components/GameCanvas";
 import JobClassSelector from "@/components/JobClassSelector";
-import { checkLoginBonus, checkTaskBonus, getGold } from "@/lib/gold";
+import { checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold } from "@/lib/gold";
 
 type Stats = {
   totalTasks: number;
   completedTasks: number;
   totalPoints: number;
   primaryTheme: string | null;
+  studyTotalMinutes?: number;
 };
 
 const JOB_KEY = "rpg_job_class";
@@ -51,9 +52,11 @@ export default function GamePage() {
     // ログインボーナス・タスクボーナス
     const loginGold = checkLoginBonus();
     const taskGold  = checkTaskBonus(data.completedTasks);
+    const studyGold = checkStudyBonus(data.studyTotalMinutes ?? 0);
     const msgs: string[] = [];
     if (loginGold > 0) msgs.push(`ログインボーナス +${loginGold}G！`);
     if (taskGold  > 0) msgs.push(`タスク完了ボーナス +${taskGold}G！`);
+    if (studyGold > 0) msgs.push(`自習ボーナス +${studyGold}G！📚`);
     if (msgs.length) {
       setBonusMsg(msgs.join("　"));
       setTimeout(() => setBonusMsg(null), 4000);
