@@ -15,11 +15,13 @@ export default function PartyPage() {
   const [gold, setGold]           = useState(0);
   const [party, setParty]         = useState<PartyMemberData[]>([]);
   const [playerLevel, setPlayerLevel] = useState(1);
+  const [playerJob, setPlayerJob]     = useState("warrior");
   const [message, setMessage]     = useState("");
 
   useEffect(() => {
     setGold(getGold());
     setParty(getParty());
+    setPlayerJob(localStorage.getItem(JOB_KEY) ?? "warrior");
     // Get player level from stats if available; fallback to stored points
     async function loadLevel() {
       try {
@@ -88,7 +90,7 @@ export default function PartyPage() {
           <div className="flex items-center justify-between rounded-lg border border-yellow-700 bg-yellow-950/20 px-3 py-2 mb-2">
             <div>
               <span className="text-sm font-bold text-yellow-300">あなた</span>
-              <span className="ml-2 text-xs text-gray-400">{JOB_LABEL[localStorage.getItem(JOB_KEY) ?? "warrior"] ?? "戦士"}</span>
+              <span className="ml-2 text-xs text-gray-400">{JOB_LABEL[playerJob] ?? "戦士"}</span>
             </div>
             <span className="text-xs text-gray-400">Lv.{playerLevel}</span>
           </div>
