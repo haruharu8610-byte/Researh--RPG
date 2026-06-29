@@ -7,8 +7,10 @@ import EnemySprite from "@/components/EnemySprite";
 import {
   getFloor, advanceFloor, getFloorEnemyGroup,
   calcPlayerStats, calcPhysicalDamage, calcMagicDamage, calcEnemySpellDamage,
-  getAvailableSpells, tryHit, ELEMENT_LABEL, SPELLS,
+  calcPoisonDamage, getAvailableSpells, tryHit, getEffectiveness,
+  ELEMENT_LABEL, SPELLS, STATUS_LABEL, tryApplyStatus,
   type ActiveEnemy, type PlayerStats, type JobClass, type Spell,
+  type ActiveStatus,
 } from "@/lib/battle";
 import {
   getEquippedWeapon, getEquippedArmor, getInventory, removeInventory, addInventory,
@@ -55,29 +57,35 @@ function MpBar({ current, max, blocks = 12 }: { current: number; max: number; bl
 
 export default function BattlePage() {
   const router = useRouter();
-  const [player, setPlayer]       = useState<PlayerStats | null>(null);
-  const [playerHp, setPlayerHp]   = useState(0);
-  const [playerMp, setPlayerMp]   = useState(0);
-  const [enemies, setEnemies]     = useState<ActiveEnemy[]>([]);
-  const [targetIdx, setTargetIdx] = useState(0);
-  const [phase, setPhase]         = useState<Phase>("intro");
-  const [selectCmd, setSelectCmd] = useState<SelectCmd>("attack");
-  const [messages, setMessages]   = useState<string[]>([]);
-  const [displayed, setDisplayed] = useState("");
-  const [damagedUids, setDamagedUids] = useState<Set<string>>(new Set());
+  const [player, setPlayer]             = useState<PlayerStats | null>(null);
+  const [playerHp, setPlayerHp]         = useState(0);
+  const [playerMp, setPlayerMp]         = useState(0);
+  const [playerStatus, setPlayerStatus] = useState<ActiveStatus | null>(null);
+  const [enemies, setEnemies]           = useState<ActiveEnemy[]>([]);
+  const [enemyStatuses, setEnemyStatuses] = useState<Map<string, ActiveStatus>>(new Map());
+  const [targetIdx, setTargetIdx]       = useState(0);
+  const [phase, setPhase]               = useState<Phase>("intro");
+  const [selectCmd, setSelectCmd]       = useState<SelectCmd>("attack");
+  const [messages, setMessages]         = useState<string[]>([]);
+  const [displayed, setDisplayed]       = useState("");
+  const [damagedUids, setDamagedUids]   = useState<Set<string>>(new Set());
   const [playerDamaged, setPlayerDamaged] = useState(false);
-  const [victories, setVictories] = useState(0);
-  const [spells, setSpells]       = useState<Spell[]>([]);
-  const [spellIdx, setSpellIdx]   = useState(0);
-  const [floor, setFloor]         = useState(1);
-  const [isBossFloor, setIsBossFloor] = useState(false);
+  const [victories, setVictories]       = useState(0);
+  const [spells, setSpells]             = useState<Spell[]>([]);
+  const [spellIdx, setSpellIdx]         = useState(0);
+  const [floor, setFloor]               = useState(1);
+  const [isBossFloor, setIsBossFloor]   = useState(false);
 
-  const pendingPhase  = useRef<Phase | null>(null);
-  const pendingAction = useRef<PendingAction | null>(null);
-  const playerHpRef   = useRef(0);
-  const playerMpRef   = useRef(0);
-  const enemiesRef    = useRef<ActiveEnemy[]>([]);
-  const playerRef     = useRef<PlayerStats | null>(null);
+  const pendingPhase     = useRef<Phase | null>(null);
+  const pendingCallback  = useRef<(() => void) | null>(null);
+  const pendingAction    = useRef<PendingAction | null>(null);
+  const playerHpRef      = useRef(0);
+  const playerMpRef      = useRef(0);
+  const enemiesRef       = useRef<ActiveEnemy[]>([]);
+  const playerRef        = useRef<PlayerStats | null>(null);
+  const playerStatusRef  = useRef<ActiveStatus | null>(null);
+  const enemyStatusesRef = useRef<Map<string, ActiveStatus>>(new Map());
+  const statusProcessed  = useRef(false);
 
   // タイプライター
   useEffect(() => {
@@ -87,7 +95,14 @@ export default function BattlePage() {
   }, [messages, displayed]);
 
   const pushMessages = useCallback((msgs: string[], next?: Phase) => {
-    pendingPhase.current = next ?? null;
+    pendingPhase.current    = next ?? null;
+    pendingCallback.current = null;
+    setMessages(msgs); setDisplayed(""); setPhase("message");
+  }, []);
+
+  const pushMessagesWithCb = useCallback((msgs: string[], cb: () => void) => {
+    pendingPhase.current    = null;
+    pendingCallback.current = cb;
     setMessages(msgs); setDisplayed(""); setPhase("message");
   }, []);
 
@@ -98,8 +113,11 @@ export default function BattlePage() {
       setMessages(rest); setDisplayed("");
     } else {
       const next = pendingPhase.current;
+      const cb   = pendingCallback.current;
+      pendingCallback.current = null;
       setMessages([]); setDisplayed("");
-      if (next) setPhase(next);
+      if (cb) cb();
+      else if (next) setPhase(next);
     }
   }
 
@@ -112,7 +130,87 @@ export default function BattlePage() {
     setTimeout(() => setPlayerDamaged(false), 400);
   }
 
-  // 敵ターン
+  // ── 状態異常ヘルパー ─────────────────────────────────────────
+  function setEnemyStatus(uid: string, status: ActiveStatus | null) {
+    setEnemyStatuses((prev) => {
+      const next = new Map(prev);
+      if (status === null) next.delete(uid); else next.set(uid, status);
+      return next;
+    });
+    const m = new Map(enemyStatusesRef.current);
+    if (status === null) m.delete(uid); else m.set(uid, status);
+    enemyStatusesRef.current = m;
+  }
+
+  function applyPlayerStatus(status: ActiveStatus) {
+    setPlayerStatus(status); playerStatusRef.current = status;
+  }
+
+  // ── プレイヤーターン開始（状態異常処理）─────────────────────
+  const startPlayerTurn = useCallback(() => {
+    const status = playerStatusRef.current;
+    if (!status) { setPhase("select"); return; }
+
+    const msgs: string[] = [];
+    let skipTurn = false;
+
+    // 毒ダメージ
+    if (status.type === "poison") {
+      const dmg = calcPoisonDamage(playerRef.current!.maxHp);
+      const newHp = Math.max(0, playerHpRef.current - dmg);
+      setPlayerHp(newHp); playerHpRef.current = newHp;
+      flashPlayer();
+      msgs.push(`☠️ 毒のダメージ！ ${dmg}ダメージを受けた！`);
+      if (newHp <= 0) {
+        setPlayerStatus(null); playerStatusRef.current = null;
+        pushMessages([...msgs, "やられてしまった…"], "defeat");
+        return;
+      }
+    }
+
+    // 眠り・麻痺
+    if (status.type === "sleep") {
+      msgs.push("💤 眠っている…");
+      skipTurn = true;
+    } else if (status.type === "paralysis" && Math.random() < 0.40) {
+      msgs.push("⚡ しびれて動けない！");
+      skipTurn = true;
+    }
+
+    // ターン数デクリメント
+    const newTurns = status.turnsLeft - 1;
+    if (newTurns <= 0) {
+      setPlayerStatus(null); playerStatusRef.current = null;
+      if (status.type !== "sleep") msgs.push(`${STATUS_LABEL[status.type]}が解けた！`);
+    } else {
+      const upd = { ...status, turnsLeft: newTurns };
+      setPlayerStatus(upd); playerStatusRef.current = upd;
+    }
+
+    statusProcessed.current = true;
+    if (skipTurn) {
+      if (msgs.length) {
+        pushMessagesWithCb(msgs, () => doEnemyTurn(playerHpRef.current));
+      } else {
+        doEnemyTurn(playerHpRef.current);
+      }
+    } else if (msgs.length) {
+      pushMessages(msgs, "select");
+    } else {
+      setPhase("select");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pushMessages, pushMessagesWithCb]);
+
+  // selectフェーズに入ったとき状態異常チェック
+  useEffect(() => {
+    if (phase !== "select") { statusProcessed.current = false; return; }
+    if (statusProcessed.current) return;
+    statusProcessed.current = true;
+    if (playerStatusRef.current) startPlayerTurn();
+  }, [phase, startPlayerTurn]);
+
+  // ── 敵ターン ────────────────────────────────────────────────
   const doEnemyTurn = useCallback((curHp: number) => {
     const alive = enemiesRef.current.filter((e) => e.hp > 0);
     const p = playerRef.current;
@@ -120,25 +218,79 @@ export default function BattlePage() {
 
     const msgs: string[] = [];
     let hp = curHp;
+    const statusUpdates: Array<{ uid: string; status: ActiveStatus | null }> = [];
 
     for (const e of alive) {
       if (hp <= 0) break;
 
-      // 30%で魔法使用（spellIdsがある場合）
-      const useSpell = e.spellIds.length > 0 && Math.random() < 0.3;
+      // 敵状態異常チェック
+      const eStatus = enemyStatusesRef.current.get(e.uid);
+      if (eStatus) {
+        if (eStatus.type === "poison") {
+          const dmg = calcPoisonDamage(e.floorHp);
+          const newEHp = Math.max(0, e.hp - dmg);
+          flashEnemy(e.uid);
+          enemiesRef.current = enemiesRef.current.map(en =>
+            en.uid === e.uid ? { ...en, hp: newEHp } : en
+          );
+          setEnemies([...enemiesRef.current]);
+          msgs.push(`☠️ ${e.name}は毒で${dmg}ダメージを受けた！`);
+          if (newEHp <= 0) {
+            statusUpdates.push({ uid: e.uid, status: null });
+            continue;
+          }
+        }
+        if (eStatus.type === "sleep") {
+          msgs.push(`💤 ${e.name}は眠っている…`);
+          const newTurns = eStatus.turnsLeft - 1;
+          statusUpdates.push({ uid: e.uid, status: newTurns <= 0 ? null : { ...eStatus, turnsLeft: newTurns } });
+          continue;
+        }
+        if (eStatus.type === "paralysis" && Math.random() < 0.40) {
+          msgs.push(`⚡ ${e.name}はしびれて動けない！`);
+          const newTurns = eStatus.turnsLeft - 1;
+          statusUpdates.push({ uid: e.uid, status: newTurns <= 0 ? null : { ...eStatus, turnsLeft: newTurns } });
+          continue;
+        }
+        // デクリメント
+        const newTurns = eStatus.turnsLeft - 1;
+        statusUpdates.push({ uid: e.uid, status: newTurns <= 0 ? null : { ...eStatus, turnsLeft: newTurns } });
+        if (newTurns <= 0) {
+          msgs.push(`${e.name}の${STATUS_LABEL[eStatus.type]}が解けた！`);
+        }
+      }
 
+      // 30%で魔法使用
+      const useSpell = e.spellIds.length > 0 && Math.random() < 0.3;
       if (useSpell) {
         const spellId = e.spellIds[Math.floor(Math.random() * e.spellIds.length)];
         const spellDef = SPELLS.find((s) => s.id === spellId);
         if (spellDef) {
-          const dmg = calcEnemySpellDamage(e.magic, spellDef);
-          hp = Math.max(0, hp - dmg);
-          flashPlayer();
-          msgs.push(`${e.name}が${spellDef.name}を唱えた！`, `${dmg}のダメージ！`);
+          if (spellDef.effect) {
+            // 状態異常呪文
+            msgs.push(`${e.name}が${spellDef.name}を唱えた！`);
+            const curPStatus = playerStatusRef.current;
+            if (curPStatus) {
+              msgs.push("しかし効果はなかった！");
+            } else if (tryApplyStatus(spellDef.effect.baseChance, p.statusResist)) {
+              const newStatus: ActiveStatus = { type: spellDef.effect.status, turnsLeft: spellDef.effect.turns };
+              applyPlayerStatus(newStatus);
+              msgs.push(`${STATUS_LABEL[spellDef.effect.status]}になった！`);
+            } else {
+              msgs.push(`${STATUS_LABEL[spellDef.effect.status]}は効かなかった！`);
+            }
+          } else {
+            // ダメージ呪文
+            const dmg = calcEnemySpellDamage(e.magic, spellDef);
+            hp = Math.max(0, hp - dmg);
+            flashPlayer();
+            msgs.push(`${e.name}が${spellDef.name}を唱えた！`, `${dmg}のダメージ！`);
+          }
         }
       } else {
-        // 物理攻撃（5%ミス）
-        if (!tryHit()) {
+        // 物理攻撃（混乱チェック）
+        const eConfused = enemyStatusesRef.current.get(e.uid)?.type === "confuse";
+        if (!tryHit(eConfused)) {
           msgs.push(`${e.name}のこうげき！　ミス！`);
           continue;
         }
@@ -146,13 +298,26 @@ export default function BattlePage() {
         hp = Math.max(0, hp - dmg);
         flashPlayer();
         msgs.push(`${e.name}のこうげき！　${dmg}のダメージ！`);
+
+        // 眠っているプレイヤーを起こす
+        const curPStatus = playerStatusRef.current;
+        if (curPStatus?.type === "sleep") {
+          setPlayerStatus(null); playerStatusRef.current = null;
+          msgs.push("物理攻撃で目が覚めた！");
+        }
       }
+    }
+
+    // 敵状態異常を一括更新
+    for (const { uid, status } of statusUpdates) {
+      setEnemyStatus(uid, status);
     }
 
     setPlayerHp(hp); playerHpRef.current = hp;
     if (hp <= 0) pushMessages([...msgs, "やられてしまった…"], "defeat");
-    else pushMessages(msgs, "select");
-  }, [pushMessages]);
+    else pushMessagesWithCb(msgs, () => startPlayerTurn());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pushMessages, pushMessagesWithCb, startPlayerTurn]);
 
   // 初期化
   useEffect(() => {
@@ -170,6 +335,7 @@ export default function BattlePage() {
       const p = calcPlayerStats(level, job,
         weapon?.attackBonus ?? 0, weapon?.magicBonus ?? 0,
         armor?.defenseBonus ?? 0, armor?.magicBonus ?? 0,
+        armor?.statusResist ?? 0,
       );
       const currentFloor = getFloor();
       const boss = currentFloor % 5 === 0;
@@ -246,7 +412,9 @@ export default function BattlePage() {
     if (cmd === "run") {
       if (isBossFloor) { pushMessages(["ボスからはにげられない！"], "select"); return; }
       if (Math.random() < 0.5) pushMessages(["うまくにげられた！"], "ran");
-      else { pushMessages(["にげられなかった！"]); setTimeout(() => doEnemyTurn(playerHpRef.current), 1200); }
+      else {
+        pushMessagesWithCb(["にげられなかった！"], () => doEnemyTurn(playerHpRef.current));
+      }
     }
   }
 
@@ -260,15 +428,13 @@ export default function BattlePage() {
       removeInventory(potionEntry.id);
       const newHp = Math.min(player!.maxHp, playerHpRef.current + item.hpRestore!);
       setPlayerHp(newHp); playerHpRef.current = newHp;
-      pushMessages([`${item.name}をつかった！ HPが${item.hpRestore}回復！`]);
-      setTimeout(() => doEnemyTurn(playerHpRef.current), 1200);
+      pushMessagesWithCb([`${item.name}をつかった！ HPが${item.hpRestore}回復！`], () => doEnemyTurn(playerHpRef.current));
     } else if (etherEntry) {
       const item = SHOP_ITEMS.find(i => i.id === etherEntry.id)!;
       removeInventory(etherEntry.id);
       const newMp = Math.min(player!.maxMp, playerMpRef.current + item.mpRestore!);
       setPlayerMp(newMp); playerMpRef.current = newMp;
-      pushMessages([`${item.name}をつかった！ MPが${item.mpRestore}回復！`]);
-      setTimeout(() => doEnemyTurn(playerHpRef.current), 1200);
+      pushMessagesWithCb([`${item.name}をつかった！ MPが${item.mpRestore}回復！`], () => doEnemyTurn(playerHpRef.current));
     }
   }
 
@@ -282,18 +448,26 @@ export default function BattlePage() {
     const msgs: string[] = [];
 
     if (action.type === "attack") {
-      // 5%ミス
-      if (!tryHit()) {
-        msgs.push("こうげき！　ミス！");
-        pushMessages(msgs);
-        setTimeout(() => doEnemyTurn(playerHpRef.current), 1200);
+      // 混乱でミス率50%
+      const playerConfused = playerStatusRef.current?.type === "confuse";
+      if (!tryHit(playerConfused)) {
+        msgs.push(playerConfused ? "😵 混乱してこうげきがミス！" : "こうげき！　ミス！");
+        pushMessagesWithCb(msgs, () => doEnemyTurn(playerHpRef.current));
         return;
       }
       const dmg = calcPhysicalDamage(player.attack, aliveTarget.defense, aliveTarget.physResist);
       flashEnemy(aliveTarget.uid);
-      updated = updated.map(e => e.uid === aliveTarget.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
       msgs.push(`${aliveTarget.name}に${dmg}のダメージ！`);
       if (aliveTarget.physResist < 0.5) msgs.push("物理攻撃はあまり効かないようだ…");
+
+      // 眠っている敵を起こす
+      const eSt = enemyStatusesRef.current.get(aliveTarget.uid);
+      if (eSt?.type === "sleep") {
+        setEnemyStatus(aliveTarget.uid, null);
+        msgs.push(`${aliveTarget.name}は目を覚ました！`);
+      }
+
+      updated = updated.map(e => e.uid === aliveTarget.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
     }
 
     if (action.type === "spell") {
@@ -303,12 +477,32 @@ export default function BattlePage() {
       setPlayerMp(newMp); playerMpRef.current = newMp;
 
       const targets = spell.target === "all" ? alive : [aliveTarget];
-      for (const t of targets) {
-        const dmg = calcMagicDamage(player.magic, spell, t.element, t.magicResist);
-        flashEnemy(t.uid);
-        updated = updated.map(e => e.uid === t.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
-        const eff = getEffMsg(spell, t);
-        msgs.push(`${spell.name}！ ${t.name}に${dmg}ダメージ！${eff}`);
+
+      if (spell.effect) {
+        // 状態異常呪文
+        msgs.push(`${spell.name}！`);
+        for (const t of targets) {
+          const curSt = enemyStatusesRef.current.get(t.uid);
+          if (curSt) {
+            msgs.push(`${t.name}はすでに${STATUS_LABEL[curSt.type]}だ！`);
+          } else if (tryApplyStatus(spell.effect.baseChance, t.statusResist[spell.effect.status])) {
+            const newSt: ActiveStatus = { type: spell.effect.status, turnsLeft: spell.effect.turns };
+            setEnemyStatus(t.uid, newSt);
+            flashEnemy(t.uid);
+            msgs.push(`${t.name}が${STATUS_LABEL[spell.effect.status]}になった！`);
+          } else {
+            msgs.push(`${t.name}には効かなかった！`);
+          }
+        }
+      } else {
+        // ダメージ呪文
+        for (const t of targets) {
+          const dmg = calcMagicDamage(player.magic, spell, t.element, t.magicResist);
+          flashEnemy(t.uid);
+          updated = updated.map(e => e.uid === t.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
+          const eff = getEffMsg(spell, t);
+          msgs.push(`${spell.name}！ ${t.name}に${dmg}ダメージ！${eff}`);
+        }
       }
     }
 
@@ -331,14 +525,13 @@ export default function BattlePage() {
         `${nextFloor}階へ進む…`,
       ], "victory");
     } else {
-      pushMessages(msgs);
-      setTimeout(() => doEnemyTurn(playerHpRef.current), 1500);
+      pushMessagesWithCb(msgs, () => doEnemyTurn(playerHpRef.current));
     }
   }
 
   function getEffMsg(spell: Spell, enemy: ActiveEnemy): string {
     if (enemy.magicResist < 0.5) return "　魔法はあまり効かないようだ…";
-    const eff = require("@/lib/battle").getEffectiveness(spell.element, enemy.element);
+    const eff = getEffectiveness(spell.element, enemy.element);
     if (eff >= 1.8) return "　こうかはばつぐんだ！";
     if (eff <= 0.6) return "　こうかはいまひとつ…";
     return "";
@@ -378,6 +571,7 @@ export default function BattlePage() {
             {enemies.map((e) => {
               const isAlive = e.hp > 0;
               const isTarget = phase === "targeting" && alive[aliveTargetIdx]?.uid === e.uid;
+              const eSt = enemyStatuses.get(e.uid);
               return (
                 <div key={e.uid} className="flex flex-col items-center gap-1">
                   {isTarget
@@ -393,10 +587,15 @@ export default function BattlePage() {
                   {isAlive ? (
                     <div className="text-center space-y-0.5">
                       <div className="text-xs text-white font-bold">{e.name}</div>
-                      <div className="text-xs text-gray-300 space-x-1">
-                        <span>{ELEMENT_LABEL[e.element]}</span>
+                      <div className="flex flex-wrap justify-center gap-1 text-xs">
+                        <span className="text-gray-300">{ELEMENT_LABEL[e.element]}</span>
                         {e.physResist < 0.5  && <span className="text-blue-300">🛡️物理耐性</span>}
                         {e.magicResist < 0.5 && <span className="text-purple-300">🔮魔法耐性</span>}
+                        {eSt && (
+                          <span className="rounded bg-gray-700 px-1 py-0.5 text-yellow-300">
+                            {STATUS_LABEL[eSt.type]}({eSt.turnsLeft})
+                          </span>
+                        )}
                       </div>
                       <HpBar current={e.hp} max={e.floorHp} blocks={10} />
                     </div>
@@ -461,8 +660,8 @@ export default function BattlePage() {
               {spells.map((sp, i) => (
                 <button
                   key={sp.id}
-                  onClick={(e) => {
-                    e.stopPropagation(); setSpellIdx(i);
+                  onClick={(ev) => {
+                    ev.stopPropagation(); setSpellIdx(i);
                     pendingAction.current = { type: "spell", spell: sp };
                     if (sp.target === "all") executeAction(enemies);
                     else setPhase("targeting");
@@ -472,7 +671,7 @@ export default function BattlePage() {
                     spellIdx === i ? "bg-yellow-400 text-gray-900 font-bold" : "bg-gray-700 text-white"
                   }`}
                 >
-                  <span>{spellIdx === i ? "▶ " : ""}{sp.name} {ELEMENT_LABEL[sp.element]}</span>
+                  <span>{spellIdx === i ? "▶ " : ""}{sp.name} {sp.effect ? STATUS_LABEL[sp.effect.status] : ELEMENT_LABEL[sp.element]}</span>
                   <span className="text-xs opacity-80">MP {sp.mpCost}　{sp.target === "all" ? "全体" : "単体"}</span>
                 </button>
               ))}
@@ -484,6 +683,14 @@ export default function BattlePage() {
         <div className={`rounded-xl border-2 border-gray-500 bg-gray-800 p-3 text-sm transition-colors ${playerDamaged ? "border-red-500 bg-red-950/20" : ""}`}>
           <div className="flex justify-between mb-2">
             <span className="text-yellow-300 font-bold">Lv.{player.level} {JOB[player.jobClass]}</span>
+            <div className="flex gap-2 items-center">
+              {playerStatus && (
+                <span className="rounded bg-yellow-900 border border-yellow-700 px-2 py-0.5 text-xs text-yellow-300 font-bold">
+                  {STATUS_LABEL[playerStatus.type]}({playerStatus.turnsLeft})
+                </span>
+              )}
+              <span className="text-xs text-gray-400">耐性{Math.round(player.statusResist * 100)}%</span>
+            </div>
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs">

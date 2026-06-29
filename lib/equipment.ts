@@ -4,6 +4,7 @@ export type ShopItem = {
   id: string; name: string; category: ItemCategory; cost: number; description: string;
   attackBonus?: number; defenseBonus?: number; magicBonus?: number;
   hpRestore?: number; mpRestore?: number;
+  statusResist?: number; // 防具のみ：状態異常耐性ボーナス（0〜0.5）
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -14,12 +15,12 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "magic_staff",   name: "まほうの杖",      category: "weapon", cost: 500,  description: "魔力を高める杖",       attackBonus: 5, magicBonus: 18 },
   { id: "holy_staff",    name: "せいなる杖",      category: "weapon", cost: 1200, description: "神聖な力を宿す杖",     attackBonus: 8, magicBonus: 35 },
   { id: "dragon_sword",  name: "ドラゴンのつるぎ", category: "weapon", cost: 2000, description: "最強の剣",             attackBonus: 45 },
-  // 防具
-  { id: "leather_armor", name: "かわのよろい",    category: "armor",  cost: 150,  description: "軽い革の鎧",           defenseBonus: 5  },
-  { id: "chain_mail",    name: "くさりかたびら",  category: "armor",  cost: 400,  description: "鎖帷子",               defenseBonus: 12 },
-  { id: "iron_armor",    name: "てつのよろい",    category: "armor",  cost: 900,  description: "重い鉄の鎧",           defenseBonus: 22 },
-  { id: "magic_robe",    name: "まほうのローブ",  category: "armor",  cost: 600,  description: "魔法防御に優れた",     defenseBonus: 8, magicBonus: 10 },
-  { id: "dragon_armor",  name: "ドラゴンのよろい", category: "armor",  cost: 2500, description: "最強の鎧",             defenseBonus: 45 },
+  // 防具（statusResist: 素の50%に加算）
+  { id: "leather_armor", name: "かわのよろい",    category: "armor",  cost: 150,  description: "軽い革の鎧 耐性+10%",        defenseBonus: 5,  statusResist: 0.10 },
+  { id: "chain_mail",    name: "くさりかたびら",  category: "armor",  cost: 400,  description: "鎖帷子 耐性+15%",            defenseBonus: 12, statusResist: 0.15 },
+  { id: "iron_armor",    name: "てつのよろい",    category: "armor",  cost: 900,  description: "重い鉄の鎧 耐性+25%",        defenseBonus: 22, statusResist: 0.25 },
+  { id: "magic_robe",    name: "まほうのローブ",  category: "armor",  cost: 600,  description: "魔法防御＆状態異常耐性+20%", defenseBonus: 8,  magicBonus: 10, statusResist: 0.20 },
+  { id: "dragon_armor",  name: "ドラゴンのよろい", category: "armor",  cost: 2500, description: "最強の鎧 耐性+35%",          defenseBonus: 45, statusResist: 0.35 },
   // 消耗品
   { id: "potion",     name: "ポーション",     category: "potion", cost: 30,  description: "HPを40回復",   hpRestore: 40  },
   { id: "hi_potion",  name: "ハイポーション", category: "potion", cost: 80,  description: "HPを120回復",  hpRestore: 120 },
