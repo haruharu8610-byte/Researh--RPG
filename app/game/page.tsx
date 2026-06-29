@@ -213,7 +213,7 @@ export default function GamePage() {
             { label: "総ポイント", value: stats.totalPoints },
           ].map((s) => (
             <div key={s.label} className="rounded-xl border border-gray-800 bg-gray-900 p-4 text-center">
-              <div className="text-2xl font-bold">{s.value}</div>
+              <div className="text-2xl font-bold text-white">{s.value}</div>
               <div className="text-xs text-gray-400">{s.label}</div>
             </div>
           ))}
