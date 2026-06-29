@@ -137,6 +137,14 @@ export default function GamePage() {
           )}
         </div>
 
+        {/* バトルボタン */}
+        <button
+          onClick={() => router.push("/game/battle")}
+          className="w-full rounded-xl border border-yellow-600 bg-yellow-950 py-3 text-sm font-bold text-yellow-300 hover:bg-yellow-900 transition-colors"
+        >
+          ⚔️ バトルへ
+        </button>
+
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "総タスク",   value: stats.totalTasks },
