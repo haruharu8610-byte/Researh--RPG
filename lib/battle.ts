@@ -1,7 +1,7 @@
 import { DEFAULT_CRAFT_EFFECT, type CraftEffect } from "@/lib/rarity";
 
 export type Element = "fire" | "water" | "wind" | "earth" | "none";
-export type EnemyShape = "slime" | "bat" | "scorpion" | "golem" | "dragon";
+export type EnemyShape = "slime" | "bat" | "scorpion" | "golem" | "dragon" | "skeleton" | "ghost" | "orc" | "mushroom" | "lizard" | "mage" | "wolf";
 export type JobClass = "warrior" | "mage" | "cleric" | "rogue";
 export type StatusEffect = "poison" | "paralysis" | "sleep" | "confuse";
 
@@ -146,6 +146,7 @@ export type EnemyType = {
 };
 
 export const ENEMIES: EnemyType[] = [
+  // ── 通常モンスター（序盤 Lv1〜） ──────────────────────────────
   {
     id: "slime", name: "スライム", maxHp: 12, attack: 4, defense: 1, magic: 0,
     expReward: 5, goldReward: 8, minLevel: 1,
@@ -156,6 +157,24 @@ export const ENEMIES: EnemyType[] = [
     dropTable: [{ materialId: "stone", chance: 0.15 }],
   },
   {
+    id: "poison_slime", name: "どくスライム", maxHp: 15, attack: 5, defense: 1, magic: 0,
+    expReward: 8, goldReward: 10, minLevel: 1,
+    color: 0x16a34a, shape: "slime", element: "earth",
+    physResist: 1, magicResist: 1, speed: 6,
+    statusResist: { poison: 0.95, paralysis: 0.2, sleep: 0.2, confuse: 0.2 },
+    spellIds: ["dokudoku"],
+    dropTable: [{ materialId: "herb", chance: 0.30 }, { materialId: "stone", chance: 0.20 }],
+  },
+  {
+    id: "wolf", name: "もりのおおかみ", maxHp: 28, attack: 10, defense: 3, magic: 0,
+    expReward: 15, goldReward: 18, minLevel: 1,
+    color: 0x9ca3af, shape: "wolf", element: "wind",
+    physResist: 1, magicResist: 1, speed: 20,
+    statusResist: { poison: 0.3, paralysis: 0.3, sleep: 0.3, confuse: 0.3 },
+    spellIds: [],
+    dropTable: [{ materialId: "wolf_fang", chance: 0.50 }, { materialId: "iron_ore", chance: 0.25 }],
+  },
+  {
     id: "bat", name: "ドラキー", maxHp: 22, attack: 8, defense: 2, magic: 10,
     expReward: 12, goldReward: 15, minLevel: 1,
     color: 0x7c3aed, shape: "bat", element: "wind",
@@ -163,6 +182,25 @@ export const ENEMIES: EnemyType[] = [
     statusResist: { poison: 0.4, paralysis: 0.4, sleep: 0.3, confuse: 0.3 },
     spellIds: ["bagi", "manusa"],
     dropTable: [{ materialId: "bat_wing", chance: 0.45 }],
+  },
+  // ── 中盤（Lv3〜） ───────────────────────────────────────────
+  {
+    id: "mushroom", name: "おばけキノコ", maxHp: 35, attack: 11, defense: 4, magic: 8,
+    expReward: 22, goldReward: 28, minLevel: 3,
+    color: 0xef4444, shape: "mushroom", element: "earth",
+    physResist: 1, magicResist: 1, speed: 5,
+    statusResist: { poison: 0.8, paralysis: 0.3, sleep: 0.4, confuse: 0.4 },
+    spellIds: ["dokudoku", "rariho"],
+    dropTable: [{ materialId: "mushroom_spore", chance: 0.55 }, { materialId: "herb", chance: 0.40 }],
+  },
+  {
+    id: "skeleton", name: "がいこつ", maxHp: 38, attack: 13, defense: 5, magic: 0,
+    expReward: 25, goldReward: 30, minLevel: 3,
+    color: 0xe5e7eb, shape: "skeleton", element: "none",
+    physResist: 1, magicResist: 1.2, speed: 9,
+    statusResist: { poison: 1.0, paralysis: 0.5, sleep: 1.0, confuse: 0.4 },
+    spellIds: [],
+    dropTable: [{ materialId: "bone_shard", chance: 0.70 }, { materialId: "iron_ore", chance: 0.30 }],
   },
   {
     id: "scorpion", name: "おおさそり", maxHp: 40, attack: 14, defense: 6, magic: 0,
@@ -174,6 +212,34 @@ export const ENEMIES: EnemyType[] = [
     dropTable: [{ materialId: "hard_shell", chance: 0.40 }, { materialId: "iron_ore", chance: 0.60 }],
   },
   {
+    id: "ghost", name: "ゴースト", maxHp: 30, attack: 12, defense: 3, magic: 18,
+    expReward: 30, goldReward: 32, minLevel: 4,
+    color: 0xa78bfa, shape: "ghost", element: "none",
+    physResist: 0.50, magicResist: 1, speed: 14,
+    statusResist: { poison: 1.0, paralysis: 0.7, sleep: 0.5, confuse: 0.5 },
+    spellIds: ["manusa", "rariho"],
+    dropTable: [{ materialId: "ghost_orb", chance: 0.45 }, { materialId: "magic_stone", chance: 0.20 }],
+  },
+  // ── 中盤〜終盤（Lv5〜） ──────────────────────────────────────
+  {
+    id: "lizard", name: "リザードマン", maxHp: 55, attack: 18, defense: 8, magic: 5,
+    expReward: 40, goldReward: 50, minLevel: 5,
+    color: 0x22c55e, shape: "lizard", element: "fire",
+    physResist: 1, magicResist: 1, speed: 15,
+    statusResist: { poison: 0.5, paralysis: 0.4, sleep: 0.4, confuse: 0.4 },
+    spellIds: ["mera", "mahi"],
+    dropTable: [{ materialId: "lizard_hide", chance: 0.50 }, { materialId: "iron_ore", chance: 0.50 }],
+  },
+  {
+    id: "orc", name: "オークキング", maxHp: 65, attack: 20, defense: 10, magic: 0,
+    expReward: 48, goldReward: 60, minLevel: 5,
+    color: 0x16a34a, shape: "orc", element: "earth",
+    physResist: 1, magicResist: 1, speed: 8,
+    statusResist: { poison: 0.4, paralysis: 0.5, sleep: 0.4, confuse: 0.5 },
+    spellIds: [],
+    dropTable: [{ materialId: "orc_tusk", chance: 0.45 }, { materialId: "hard_shell", chance: 0.25 }],
+  },
+  {
     id: "golem", name: "ゴーレム", maxHp: 70, attack: 22, defense: 14, magic: 8,
     expReward: 55, goldReward: 70, minLevel: 5,
     color: 0x6b7280, shape: "golem", element: "earth",
@@ -183,6 +249,34 @@ export const ENEMIES: EnemyType[] = [
     dropTable: [{ materialId: "golem_core", chance: 0.30 }, { materialId: "iron_ore", chance: 0.80 }],
   },
   {
+    id: "dark_mage", name: "まじゅつし", maxHp: 50, attack: 8, defense: 6, magic: 35,
+    expReward: 60, goldReward: 75, minLevel: 6,
+    color: 0x6d28d9, shape: "mage", element: "none",
+    physResist: 1, magicResist: 0.60, speed: 11,
+    statusResist: { poison: 0.5, paralysis: 0.5, sleep: 0.5, confuse: 0.6 },
+    spellIds: ["merazoma", "rarihoma", "manusa"],
+    dropTable: [{ materialId: "mage_robe_frag", chance: 0.40 }, { materialId: "magic_stone", chance: 0.50 }],
+  },
+  // ── 終盤（Lv8〜） ────────────────────────────────────────────
+  {
+    id: "ice_wolf", name: "こおりのおおかみ", maxHp: 80, attack: 25, defense: 10, magic: 15,
+    expReward: 75, goldReward: 90, minLevel: 7,
+    color: 0x7dd3fc, shape: "wolf", element: "water",
+    physResist: 1, magicResist: 0.7, speed: 22,
+    statusResist: { poison: 0.5, paralysis: 0.5, sleep: 0.4, confuse: 0.4 },
+    spellIds: ["hyadaruko", "mahi"],
+    dropTable: [{ materialId: "wolf_fang", chance: 0.60 }, { materialId: "rare_crystal", chance: 0.10 }],
+  },
+  {
+    id: "dark_knight", name: "ダークナイト", maxHp: 100, attack: 32, defense: 18, magic: 10,
+    expReward: 90, goldReward: 110, minLevel: 8,
+    color: 0x374151, shape: "skeleton", element: "none",
+    physResist: 1, magicResist: 1, speed: 10,
+    statusResist: { poison: 0.6, paralysis: 0.6, sleep: 0.7, confuse: 0.6 },
+    spellIds: ["gira", "mahi"],
+    dropTable: [{ materialId: "bone_shard", chance: 0.80 }, { materialId: "dark_crystal", chance: 0.15 }],
+  },
+  {
     id: "dragon", name: "ドラゴン", maxHp: 130, attack: 38, defense: 22, magic: 30,
     expReward: 110, goldReward: 150, minLevel: 8,
     color: 0xdc2626, shape: "dragon", element: "fire",
@@ -190,6 +284,33 @@ export const ENEMIES: EnemyType[] = [
     statusResist: { poison: 0.8, paralysis: 0.8, sleep: 0.85, confuse: 0.7 },
     spellIds: ["merazoma", "rariho"],
     dropTable: [{ materialId: "dragon_scale", chance: 0.50 }, { materialId: "rare_crystal", chance: 0.12 }],
+  },
+  {
+    id: "arch_mage", name: "だいまじゅつし", maxHp: 90, attack: 10, defense: 12, magic: 55,
+    expReward: 130, goldReward: 180, minLevel: 10,
+    color: 0x9333ea, shape: "mage", element: "none",
+    physResist: 1, magicResist: 0.50, speed: 13,
+    statusResist: { poison: 0.6, paralysis: 0.6, sleep: 0.6, confuse: 0.7 },
+    spellIds: ["gigabreak", "rarihoma", "manusa", "dokudoku"],
+    dropTable: [{ materialId: "mage_robe_frag", chance: 0.60 }, { materialId: "dark_crystal", chance: 0.20 }],
+  },
+  {
+    id: "ice_dragon", name: "こおりのドラゴン", maxHp: 160, attack: 35, defense: 28, magic: 40,
+    expReward: 150, goldReward: 200, minLevel: 12,
+    color: 0x38bdf8, shape: "dragon", element: "water",
+    physResist: 1, magicResist: 0.40, speed: 11,
+    statusResist: { poison: 0.7, paralysis: 0.8, sleep: 0.8, confuse: 0.7 },
+    spellIds: ["mahyado", "rariho", "mahi"],
+    dropTable: [{ materialId: "dragon_scale", chance: 0.60 }, { materialId: "rare_crystal", chance: 0.18 }, { materialId: "angel_feather", chance: 0.05 }],
+  },
+  {
+    id: "demon_lord", name: "まおう", maxHp: 220, attack: 55, defense: 35, magic: 60,
+    expReward: 300, goldReward: 400, minLevel: 15,
+    color: 0x7f1d1d, shape: "orc", element: "none",
+    physResist: 0.8, magicResist: 0.6, speed: 12,
+    statusResist: { poison: 0.9, paralysis: 0.9, sleep: 0.95, confuse: 0.9 },
+    spellIds: ["gigabreak", "merazoma", "rarihoma", "manusa"],
+    dropTable: [{ materialId: "dark_crystal", chance: 0.80 }, { materialId: "legend_ore", chance: 0.30 }, { materialId: "angel_feather", chance: 0.15 }],
   },
 
   // ── レアモンスター ──────────────────────────────────────────
@@ -224,6 +345,28 @@ export const ENEMIES: EnemyType[] = [
     statusResist: { poison: 0.95, paralysis: 0.6, sleep: 0.5, confuse: 0.6 },
     spellIds: ["dokudoku", "mahi"],
     dropTable: [{ materialId: "hard_shell", chance: 1.0 }, { materialId: "rare_crystal", chance: 0.20 }],
+    isRare: true,
+  },
+  {
+    id: "ghost_rare", name: "キングゴースト",
+    maxHp: 70, attack: 20, defense: 8, magic: 40,
+    expReward: 300, goldReward: 350, minLevel: 4,
+    color: 0xf0abfc, shape: "ghost", element: "none",
+    physResist: 0.30, magicResist: 0.7, speed: 25,
+    statusResist: { poison: 1.0, paralysis: 0.8, sleep: 0.7, confuse: 0.6 },
+    spellIds: ["rarihoma", "manusa", "begirama"],
+    dropTable: [{ materialId: "ghost_orb", chance: 1.0 }, { materialId: "dark_crystal", chance: 0.30 }],
+    isRare: true,
+  },
+  {
+    id: "metal_king", name: "メタルキング",
+    maxHp: 10, attack: 5, defense: 255, magic: 0,
+    expReward: 3000, goldReward: 1000, minLevel: 10,
+    color: 0xfde68a, shape: "slime", element: "none",
+    physResist: 0.01, magicResist: 0.02, speed: 60,
+    statusResist: { poison: 0.99, paralysis: 0.99, sleep: 0.99, confuse: 0.99 },
+    spellIds: [],
+    dropTable: [{ materialId: "legend_ore", chance: 0.80 }, { materialId: "angel_feather", chance: 0.40 }],
     isRare: true,
   },
 ];
