@@ -26,6 +26,7 @@ import { RARITY_COLOR, RARITY_LABEL, DEFAULT_CRAFT_EFFECT } from "@/lib/rarity";
 import { syncPlayerState } from "@/lib/playerState";
 import { recordDefeatedEnemy, getDefeatedEnemyIds } from "@/lib/bestiary";
 import { calcTotalPoints, addBattleExp } from "@/lib/exp";
+import { calcLevel } from "@/lib/level";
 
 const CRAFTED_KEY = "rpg_crafted_list";
 function getCraftedIds(): string[] {
@@ -656,7 +657,7 @@ function BattlePageInner() {
       });
       const stats = await res.json();
       const pts = calcTotalPoints(stats);
-      const level  = Math.floor(pts / 100) + 1;
+      const level  = calcLevel(pts);
       const job    = (localStorage.getItem(JOB_KEY) ?? "warrior") as JobClass;
       // クラフトアイテムを登録してから装備取得
       const { CRAFT_RECIPES } = await import("@/lib/materials");

@@ -17,6 +17,7 @@ import {
   checkStudyStreak, getStudyStreak, checkStudyMilestones, getCurrentMilestone, getMilestoneBonus,
   grantStudyTickets, getStudyTickets, consumeStudyTicket,
 } from "@/lib/study";
+import { calcLevel, calcExp, calcExpNeeded, checkLevelUp } from "@/lib/level";
 
 type Stats = {
   totalTasks: number;
@@ -32,8 +33,6 @@ const JOB_KEY = "rpg_job_class";
 function totalPoints(stats: Stats) {
   return calcTotalPoints(stats);
 }
-function calcLevel(points: number) { return Math.floor(points / 100) + 1; }
-function calcExp(points: number) { return points % 100; }
 
 export default function GamePage() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -49,6 +48,7 @@ export default function GamePage() {
   const [goldDungeonUses, setGoldDungeonUses] = useState(0);
   const [studyStreak, setStudyStreak] = useState(0);
   const [studyTickets, setStudyTickets] = useState(0);
+  const [levelUpEffect, setLevelUpEffect] = useState<{ level: number; isMilestone: boolean } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -107,6 +107,14 @@ export default function GamePage() {
     if (!res.ok) { setError("データの取得に失敗しました"); return; }
     const data: Stats = await res.json();
     setStats(data);
+
+    // レベルアップ演出
+    const newLevel = calcLevel(totalPoints(data));
+    const levelUp = checkLevelUp(newLevel);
+    if (levelUp.leveledUp) {
+      setLevelUpEffect({ level: levelUp.newLevel, isMilestone: levelUp.isMilestone });
+      setTimeout(() => setLevelUpEffect(null), levelUp.isMilestone ? 4500 : 2800);
+    }
 
     // ログインボーナス・タスクボーナス
     const loginBonus = checkLoginBonus();
@@ -176,9 +184,10 @@ export default function GamePage() {
   if (error) return <div className="flex min-h-screen items-center justify-center text-red-400">{error}</div>;
   if (!stats) return <div className="flex min-h-screen items-center justify-center text-gray-400">読み込み中...</div>;
 
-  const pts   = totalPoints(stats);
-  const level = calcLevel(pts);
-  const exp   = calcExp(pts);
+  const pts      = totalPoints(stats);
+  const level    = calcLevel(pts);
+  const exp      = calcExp(pts);
+  const expNeeded = calcExpNeeded(level);
 
   const weapon = getEquippedWeapon();
   const armor  = getEquippedArmor();
@@ -205,6 +214,33 @@ export default function GamePage() {
             <div className="mt-2 text-lg font-bold">タスク完了！</div>
             <div className="mt-1 text-sm text-indigo-200">「{celebration}」</div>
             <div className="mt-1 text-xs text-indigo-300">EXP & ゴールド獲得！</div>
+          </div>
+        </div>
+      )}
+
+      {/* レベルアップ演出 */}
+      {levelUpEffect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none overflow-hidden">
+          {levelUpEffect.isMilestone && (
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 via-fuchsia-500/10 to-transparent animate-pulse" />
+          )}
+          <div
+            className={`relative text-center rounded-3xl px-10 py-8 shadow-2xl animate-[bounce_0.6s_ease-in-out_2] ${
+              levelUpEffect.isMilestone
+                ? "bg-gradient-to-br from-yellow-500 via-amber-500 to-fuchsia-600 shadow-[0_0_40px_12px_rgba(251,191,36,0.55)]"
+                : "bg-indigo-600/95"
+            }`}
+          >
+            <div className={levelUpEffect.isMilestone ? "text-6xl" : "text-4xl"}>
+              {levelUpEffect.isMilestone ? "🌟" : "⬆️"}
+            </div>
+            <div className={`mt-2 font-extrabold tracking-wide ${levelUpEffect.isMilestone ? "text-2xl text-white" : "text-lg text-white"}`}>
+              {levelUpEffect.isMilestone ? "節目レベル到達！" : "レベルアップ！"}
+            </div>
+            <div className="mt-1 text-3xl font-black text-white drop-shadow">Lv. {levelUpEffect.level}</div>
+            {levelUpEffect.isMilestone && (
+              <div className="mt-1 text-xs text-yellow-100">姿が一段と輝きを増した…！</div>
+            )}
           </div>
         </div>
       )}
@@ -250,10 +286,10 @@ export default function GamePage() {
           <div className="space-y-1">
             <div className="flex justify-between text-sm">
               <span className="font-semibold">Lv. {level}</span>
-              <span className="text-gray-400">{exp} / 100 EXP</span>
+              <span className="text-gray-400">{exp} / {expNeeded} EXP</span>
             </div>
             <div className="h-3 rounded-full bg-gray-800">
-              <div className="h-3 rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${exp}%` }} />
+              <div className="h-3 rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${Math.min(100, (exp / expNeeded) * 100)}%` }} />
             </div>
             {studyTitle && (
               <div className="text-center text-xs text-sky-300 font-bold pt-1">🏅「{studyTitle}」</div>

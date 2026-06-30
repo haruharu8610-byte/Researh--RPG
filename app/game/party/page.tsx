@@ -8,6 +8,7 @@ import { COMPANIONS, getParty, addPartyMember, removePartyMember, isInParty, typ
 import { calcPlayerStats } from "@/lib/battle";
 import { getGold, spendGold } from "@/lib/gold";
 import { calcTotalPoints } from "@/lib/exp";
+import { calcLevel } from "@/lib/level";
 
 const JOB_KEY = "rpg_job_class";
 
@@ -36,7 +37,7 @@ export default function PartyPage() {
         });
         const stats = await res.json();
         const pts = calcTotalPoints(stats);
-        setPlayerLevel(Math.floor(pts / 100) + 1);
+        setPlayerLevel(calcLevel(pts));
       } catch { /* use default level 1 */ }
     }
     loadLevel();
