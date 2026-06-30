@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getOwnedWeapons, getOwnedArmors, getEquippedWeapon, getEquippedArmor, equip, findItemById,
+  getOwnedWeapons, getOwnedArmors, getEquippedWeapon, getEquippedArmor, equip, unequip, findItemById,
   registerCraftedItems, removeOwnedWeapon, removeOwnedArmor, sellPriceFor, getSeriesSetBonus,
   EQUIPMENT_EXCHANGE_COST, getEquipmentNextRarity, exchangeEquipment,
   type ShopItem, type OwnedShopItem,
@@ -94,15 +94,27 @@ export default function EquipmentPage() {
   }
 
   function handleEquip(item: OwnedShopItem) {
-    if (item.id !== currentlyEquippedId) {
-      // クラフト品は所持数が0表示（被り無し前提）でも実質1個持っているとして扱う
-      const effectiveQty = item.qty > 0 ? item.qty : 1;
-      const usedElsewhere = countEquippedElsewhere(item.id, targetId);
-      if (usedElsewhere >= effectiveQty) {
-        showMsg(`${item.name}は他で使用中です（所持数: ${effectiveQty}）。先に外すか追加で入手してください`);
-        return;
+    if (item.id === currentlyEquippedId) {
+      // 装備中のものをもう一度押すと外す
+      if (targetId === "player") {
+        unequip(tab);
+      } else {
+        if (tab === "weapon") setPartyMemberWeapon(targetId, null);
+        else setPartyMemberArmor(targetId, null);
       }
+      showMsg(`${currentTarget.name}の${item.name}を外した！`);
+      refresh();
+      return;
     }
+
+    // クラフト品は所持数が0表示（被り無し前提）でも実質1個持っているとして扱う
+    const effectiveQty = item.qty > 0 ? item.qty : 1;
+    const usedElsewhere = countEquippedElsewhere(item.id, targetId);
+    if (usedElsewhere >= effectiveQty) {
+      showMsg(`${item.name}は他で使用中です（所持数: ${effectiveQty}）。先に外すか追加で入手してください`);
+      return;
+    }
+
     if (targetId === "player") {
       equip(item);
       showMsg(`${currentTarget.name}に${item.name}をそうびした！`);

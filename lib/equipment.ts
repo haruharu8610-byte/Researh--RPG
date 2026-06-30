@@ -320,6 +320,10 @@ export function equip(item: ShopItem): void {
   if (item.category === "armor")  localStorage.setItem(ARMOR_KEY, item.id);
 }
 
+export function unequip(category: "weapon" | "armor"): void {
+  localStorage.removeItem(category === "weapon" ? WEAPON_KEY : ARMOR_KEY);
+}
+
 export function getInventory(): InventoryEntry[] {
   if (typeof localStorage === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(INVENTORY_KEY) ?? "[]"); }
