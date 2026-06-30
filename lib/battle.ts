@@ -375,13 +375,13 @@ export type ActiveEnemy = EnemyType & { uid: string; hp: number; floorHp: number
 
 // ── フロアシステム ─────────────────────────────────────────────
 const FLOOR_KEY = "rpg_floor";
-export function getFloor(): number {
+export function getFloor(key: string = FLOOR_KEY): number {
   if (typeof localStorage === "undefined") return 1;
-  return parseInt(localStorage.getItem(FLOOR_KEY) ?? "1", 10);
+  return parseInt(localStorage.getItem(key) ?? "1", 10);
 }
-export function advanceFloor(): number {
-  const next = getFloor() + 1;
-  localStorage.setItem(FLOOR_KEY, String(next));
+export function advanceFloor(key: string = FLOOR_KEY): number {
+  const next = getFloor(key) + 1;
+  localStorage.setItem(key, String(next));
   return next;
 }
 

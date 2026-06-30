@@ -2,8 +2,8 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import EnemySprite from "@/components/EnemySprite";
 import {
@@ -96,7 +96,20 @@ function MpBar({ current, max, blocks = 10 }: { current: number; max: number; bl
 
 // ────────────────────────────────────────────────────────────
 export default function BattlePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-gray-400 font-mono">よみこみちゅう...</div>}>
+      <BattlePageInner />
+    </Suspense>
+  );
+}
+
+function BattlePageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isMaterialMode = searchParams.get("mode") === "material";
+  const floorKey   = isMaterialMode ? "rpg_material_floor"     : "rpg_floor";
+  const victoryKey = isMaterialMode ? "rpg_material_victories" : VICTORY_KEY;
+  const dungeonLabel = isMaterialMode ? "🪨 素材ダンジョン" : "🗺️";
 
   // ── Display state ──────────────────────────────────────
   const [player, setPlayer]             = useState<PlayerStats | null>(null);
@@ -209,16 +222,17 @@ export default function BattlePage() {
   // ── Victory check ──────────────────────────────────────
   function checkVictory(updatedEnemies: ActiveEnemy[]): boolean {
     if (!updatedEnemies.every(e => e.hp <= 0)) return false;
-    const nextFloor = advanceFloor();
-    const totalGold = updatedEnemies.reduce((s, e) => s + e.goldReward, 0);
+    const nextFloor = advanceFloor(floorKey);
+    const goldMult = isMaterialMode ? 0.5 : 1;
+    const totalGold = Math.round(updatedEnemies.reduce((s, e) => s + e.goldReward, 0) * goldMult);
     addGold(totalGold);
     addInventory("potion", 1);
     const newVic = victoriesRef.current + 1;
     victoriesRef.current = newVic;
     setVictories(newVic);
-    localStorage.setItem(VICTORY_KEY, String(newVic));
+    localStorage.setItem(victoryKey, String(newVic));
     setFloor(nextFloor);
-    if (playerRef.current) {
+    if (playerRef.current && !isMaterialMode) {
       syncPlayerState({
         level: playerRef.current.level, jobClass: playerRef.current.jobClass,
         weaponId: getEquippedWeapon()?.id ?? null, armorId: getEquippedArmor()?.id ?? null,
@@ -226,11 +240,12 @@ export default function BattlePage() {
       });
     }
 
-    // ドロップ処理
+    // ドロップ処理（素材ダンジョンはドロップ率2.5倍）
+    const dropMult = isMaterialMode ? 2.5 : 1;
     const dropMsgs: string[] = [];
     for (const e of updatedEnemies) {
       for (const drop of e.dropTable) {
-        if (Math.random() < drop.chance) {
+        if (Math.random() < Math.min(0.95, drop.chance * dropMult)) {
           addMaterial(drop.materialId, 1);
           const mat = MATERIALS.find(m => m.id === drop.materialId);
           if (mat) dropMsgs.push(`✨ ${e.name}が[${RARITY_LABEL[mat.rarity]}]${mat.name}を落とした！`);
@@ -684,10 +699,10 @@ export default function BattlePage() {
         };
       });
 
-      const currentFloor = getFloor();
+      const currentFloor = getFloor(floorKey);
       const boss = currentFloor % 5 === 0;
       const grp = getFloorEnemyGroup(level, currentFloor);
-      const vic = parseInt(localStorage.getItem(VICTORY_KEY) ?? "0", 10);
+      const vic = parseInt(localStorage.getItem(victoryKey) ?? "0", 10);
       const availableSpells = getAvailableSpells(level, job);
 
       setPlayer(p); playerRef.current = p;
@@ -1052,7 +1067,7 @@ export default function BattlePage() {
         {/* フロア + ターン順 */}
         <div className="flex justify-between items-start px-1">
           <span className={`text-sm font-bold ${isBossFloor ? "text-red-400 animate-pulse" : isRareFloor ? "text-yellow-300 animate-pulse" : "text-yellow-300"}`}>
-            {isBossFloor ? "⚠️ BOSS " : isRareFloor ? "✨ レア！ " : ""}🗺️ {floor}階
+            {isBossFloor ? "⚠️ BOSS " : isRareFloor ? "✨ レア！ " : ""}{dungeonLabel} {floor}階
           </span>
           <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
             {turnOrder.map((a, i) => (

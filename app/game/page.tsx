@@ -244,6 +244,18 @@ export default function GamePage() {
             🔨 クラフト
           </button>
           <button
+            onClick={() => router.push("/game/battle?mode=material")}
+            className="rounded-xl border border-teal-600 bg-teal-950 py-3 text-sm font-bold text-teal-300 hover:bg-teal-900 transition-colors"
+          >
+            🪨 素材ダンジョン
+          </button>
+          <button
+            onClick={() => router.push("/game/gacha")}
+            className="rounded-xl border border-fuchsia-600 bg-fuchsia-950 py-3 text-sm font-bold text-fuchsia-300 hover:bg-fuchsia-900 transition-colors"
+          >
+            🎰 ガチャ
+          </button>
+          <button
             onClick={() => router.push("/game/ranking")}
             className="col-span-2 rounded-xl border border-pink-600 bg-pink-950 py-3 text-sm font-bold text-pink-300 hover:bg-pink-900 transition-colors"
           >
