@@ -65,7 +65,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "bat_wing", qty: 2 }, { id: "magic_stone", qty: 1 }],
     goldCost: 300,
     description: "こうもりの翼で作った風の杖",
-    magicBonus: 22,
+    magicBonus: 66,
     specialEffect: { type: "mp_cost_reduce", value: 20, label: "MP消費-20%" },
   },
   {
@@ -75,7 +75,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "dragon_scale", qty: 2 }, { id: "stone", qty: 3 }],
     goldCost: 1500,
     description: "ドラゴンの鱗と牙で作った剣",
-    attackBonus: 52,
+    attackBonus: 156,
     specialEffect: { type: "fire_on_hit", value: 18, label: "物理攻撃に炎ダメージ+18" },
   },
   {
@@ -85,7 +85,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "rare_crystal", qty: 1 }, { id: "dragon_scale", qty: 2 }, { id: "magic_stone", qty: 2 }],
     goldCost: 3000,
     description: "レアクリスタルに宿る混沌の剣",
-    attackBonus: 40, magicBonus: 25,
+    attackBonus: 120, magicBonus: 75,
     specialEffect: { type: "spell_power_up", value: 35, label: "魔法威力+35%" },
   },
   {
@@ -95,7 +95,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "legend_ore", qty: 1 }, { id: "dragon_scale", qty: 3 }, { id: "rare_crystal", qty: 1 }],
     goldCost: 5000,
     description: "伝説に語られる最強の剣",
-    attackBonus: 80, magicBonus: 20,
+    attackBonus: 240, magicBonus: 60,
     specialEffect: { type: "spell_power_up", value: 50, label: "魔法威力+50%" },
   },
 
@@ -107,7 +107,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "bone_shard", qty: 3 }, { id: "iron_ore", qty: 2 }],
     goldCost: 400,
     description: "がいこつの骨で作った不気味な剣",
-    attackBonus: 28,
+    attackBonus: 84,
     specialEffect: { type: "poison_immune", value: 1, label: "毒無効" },
   },
   {
@@ -117,7 +117,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "wolf_fang", qty: 2 }, { id: "stone", qty: 2 }],
     goldCost: 350,
     description: "オオカミの牙で作った爪状の武器",
-    attackBonus: 25,
+    attackBonus: 75,
     specialEffect: { type: "speed_boost", value: 8, label: "素早さ+8" },
   },
   {
@@ -127,7 +127,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "dark_crystal", qty: 1 }, { id: "mage_robe_frag", qty: 2 }],
     goldCost: 2000,
     description: "闇の魔法使いが持つ邪悪な杖",
-    attackBonus: 10, magicBonus: 50,
+    attackBonus: 30, magicBonus: 150,
     specialEffect: { type: "spell_power_up", value: 40, label: "魔法威力+40%" },
   },
   {
@@ -137,7 +137,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "angel_feather", qty: 1 }, { id: "legend_ore", qty: 1 }, { id: "rare_crystal", qty: 2 }],
     goldCost: 8000,
     description: "天界の素材で作られた神聖な剣",
-    attackBonus: 70, magicBonus: 30,
+    attackBonus: 210, magicBonus: 90,
     specialEffect: { type: "fire_on_hit", value: 30, label: "物理攻撃に炎ダメージ+30" },
   },
 
@@ -149,7 +149,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "hard_shell", qty: 2 }, { id: "iron_ore", qty: 2 }],
     goldCost: 500,
     description: "おおさそりの甲殻で作った鎧",
-    defenseBonus: 20, statusResist: 0.10,
+    defenseBonus: 60, statusResist: 0.10,
     specialEffect: { type: "poison_immune", value: 1, label: "毒無効" },
   },
   {
@@ -159,7 +159,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "golem_core", qty: 1 }, { id: "iron_ore", qty: 3 }],
     goldCost: 1200,
     description: "ゴーレムのコアで作った盾",
-    defenseBonus: 38,
+    defenseBonus: 114,
     specialEffect: { type: "damage_reflect", value: 15, label: "ダメージ15%反射" },
   },
   {
@@ -169,7 +169,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "rare_crystal", qty: 1 }, { id: "magic_stone", qty: 3 }],
     goldCost: 2500,
     description: "全ての状態異常を跳ね返す",
-    defenseBonus: 28, magicBonus: 15, statusResist: 0.15,
+    defenseBonus: 84, magicBonus: 45, statusResist: 0.15,
     specialEffect: { type: "status_resist_all", value: 30, label: "全状態異常耐性+30%" },
   },
   {
@@ -179,7 +179,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "legend_ore", qty: 1 }, { id: "rare_crystal", qty: 1 }, { id: "dragon_scale", qty: 2 }],
     goldCost: 5000,
     description: "伝説の鎧。あらゆる攻撃を防ぐ",
-    defenseBonus: 60, statusResist: 0.30,
+    defenseBonus: 180, statusResist: 0.30,
     specialEffect: { type: "speed_boost", value: 10, label: "素早さ+10" },
   },
   {
@@ -189,7 +189,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "ghost_orb", qty: 2 }, { id: "bat_wing", qty: 2 }],
     goldCost: 1000,
     description: "ゴーストの力を宿すマント。魔法を弾く",
-    defenseBonus: 22, magicBonus: 12, statusResist: 0.20,
+    defenseBonus: 66, magicBonus: 36, statusResist: 0.20,
     specialEffect: { type: "damage_reflect", value: 20, label: "ダメージ20%反射" },
   },
   {
@@ -199,7 +199,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "angel_feather", qty: 1 }, { id: "mage_robe_frag", qty: 2 }, { id: "rare_crystal", qty: 1 }],
     goldCost: 8000,
     description: "天使の羽根で作られた聖なるローブ",
-    defenseBonus: 45, magicBonus: 35, statusResist: 0.40,
+    defenseBonus: 135, magicBonus: 105, statusResist: 0.40,
     specialEffect: { type: "status_resist_all", value: 50, label: "全状態異常耐性+50%" },
   },
 
@@ -211,7 +211,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "herb", qty: 3 }, { id: "magic_stone", qty: 1 }],
     goldCost: 280,
     description: "薬草の力を宿した治癒の杖",
-    magicBonus: 18,
+    magicBonus: 54,
     specialEffect: { type: "mp_cost_reduce", value: 15, label: "MP消費-15%" },
   },
   {
@@ -221,7 +221,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "mushroom_spore", qty: 3 }, { id: "bone_shard", qty: 2 }],
     goldCost: 320,
     description: "胞子の毒を纏った短剣",
-    attackBonus: 24,
+    attackBonus: 72,
     specialEffect: { type: "poison_immune", value: 1, label: "毒無効" },
   },
   {
@@ -231,7 +231,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "lizard_hide", qty: 3 }, { id: "iron_ore", qty: 2 }],
     goldCost: 600,
     description: "リザードマンの鱗で編んだ軽鎧",
-    defenseBonus: 26, statusResist: 0.15,
+    defenseBonus: 78, statusResist: 0.15,
     specialEffect: { type: "speed_boost", value: 6, label: "素早さ+6" },
   },
   {
@@ -241,7 +241,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "orc_tusk", qty: 3 }, { id: "stone", qty: 3 }, { id: "iron_ore", qty: 2 }],
     goldCost: 700,
     description: "オークの牙を鋲に使った重装鎧",
-    defenseBonus: 34,
+    defenseBonus: 102,
     specialEffect: { type: "damage_reflect", value: 10, label: "ダメージ10%反射" },
   },
   {
@@ -251,7 +251,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "toad_skin", qty: 3 }, { id: "herb", qty: 2 }],
     goldCost: 350,
     description: "トードの皮で作った湿地仕様のマント",
-    defenseBonus: 14, statusResist: 0.20,
+    defenseBonus: 42, statusResist: 0.20,
     specialEffect: { type: "status_resist_all", value: 15, label: "全状態異常耐性+15%" },
   },
 
@@ -263,7 +263,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "wolf_fang", qty: 3 }, { id: "bone_shard", qty: 2 }],
     goldCost: 550,
     description: "オオカミの牙を連ねた俊敏な剣",
-    attackBonus: 27,
+    attackBonus: 81,
     specialEffect: { type: "speed_boost", value: 7, label: "素早さ+7" },
   },
   {
@@ -273,7 +273,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "hard_shell", qty: 2 }, { id: "iron_ore", qty: 3 }],
     goldCost: 580,
     description: "硬い甲殻を穂先に使った槍",
-    attackBonus: 26,
+    attackBonus: 78,
     specialEffect: { type: "poison_immune", value: 1, label: "毒無効" },
   },
   {
@@ -283,7 +283,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "ghost_orb", qty: 2 }, { id: "magic_stone", qty: 2 }],
     goldCost: 600,
     description: "霊魂のたまを核にした杖",
-    attackBonus: 8, magicBonus: 30,
+    attackBonus: 24, magicBonus: 90,
     specialEffect: { type: "mp_cost_reduce", value: 12, label: "MP消費-12%" },
   },
   {
@@ -293,7 +293,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "lizard_hide", qty: 2 }, { id: "dragon_scale", qty: 1 }],
     goldCost: 650,
     description: "竜鱗を仕込んだ短剣",
-    attackBonus: 30,
+    attackBonus: 90,
     specialEffect: { type: "fire_on_hit", value: 8, label: "物理攻撃に炎ダメージ+8" },
   },
   {
@@ -303,7 +303,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "orc_tusk", qty: 3 }, { id: "stone", qty: 2 }],
     goldCost: 560,
     description: "オークの牙を打ち込んだ棍棒",
-    attackBonus: 29,
+    attackBonus: 87,
     specialEffect: { type: "damage_reflect", value: 8, label: "ダメージ8%反射" },
   },
 
@@ -315,7 +315,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "golem_core", qty: 2 }, { id: "iron_ore", qty: 3 }],
     goldCost: 2300,
     description: "ゴーレムのコアを打ち込んだ大鎚",
-    attackBonus: 48,
+    attackBonus: 144,
     specialEffect: { type: "damage_reflect", value: 18, label: "ダメージ18%反射" },
   },
   {
@@ -325,7 +325,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "rare_crystal", qty: 1 }, { id: "magic_stone", qty: 3 }],
     goldCost: 2500,
     description: "レアクリスタルを宿した魔導の杖",
-    attackBonus: 10, magicBonus: 50,
+    attackBonus: 30, magicBonus: 150,
     specialEffect: { type: "spell_power_up", value: 30, label: "魔法威力+30%" },
   },
   {
@@ -335,7 +335,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "dark_crystal", qty: 1 }, { id: "mage_robe_frag", qty: 2 }],
     goldCost: 2400,
     description: "闇のクリスタルを宿した魔剣",
-    attackBonus: 45, magicBonus: 15,
+    attackBonus: 135, magicBonus: 45,
     specialEffect: { type: "spell_power_up", value: 20, label: "魔法威力+20%" },
   },
   {
@@ -345,7 +345,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "dragon_scale", qty: 3 }, { id: "stone", qty: 2 }],
     goldCost: 2600,
     description: "竜鱗で鍛えた大剣",
-    attackBonus: 55,
+    attackBonus: 165,
     specialEffect: { type: "fire_on_hit", value: 15, label: "物理攻撃に炎ダメージ+15" },
   },
   {
@@ -355,7 +355,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "crystal_shard", qty: 3 }, { id: "rare_crystal", qty: 1 }],
     goldCost: 2550,
     description: "輝くクリスタルの牙を持つ武器",
-    attackBonus: 52, magicBonus: 10,
+    attackBonus: 156, magicBonus: 30,
     specialEffect: { type: "mp_cost_reduce", value: 18, label: "MP消費-18%" },
   },
   {
@@ -365,7 +365,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "legend_ore", qty: 1 }, { id: "rare_crystal", qty: 2 }, { id: "angel_feather", qty: 1 }],
     goldCost: 9000,
     description: "歴代の大賢者が極めた、魔力を極限まで高める杖",
-    attackBonus: 18, magicBonus: 110,
+    attackBonus: 54, magicBonus: 330,
     specialEffect: { type: "spell_power_up", value: 55, label: "魔法威力+55%" },
   },
 
@@ -377,7 +377,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "wolf_fang", qty: 2 }, { id: "iron_ore", qty: 2 }],
     goldCost: 580,
     description: "牙を鋲に使った軽量な鎧",
-    defenseBonus: 20,
+    defenseBonus: 60,
     specialEffect: { type: "speed_boost", value: 5, label: "素早さ+5" },
   },
   {
@@ -387,7 +387,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "hard_shell", qty: 3 }],
     goldCost: 600,
     description: "堅牢な甲殻でできた重装鎧",
-    defenseBonus: 24,
+    defenseBonus: 72,
     specialEffect: { type: "poison_immune", value: 1, label: "毒無効" },
   },
   {
@@ -397,7 +397,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "ghost_orb", qty: 2 }, { id: "bat_wing", qty: 2 }],
     goldCost: 620,
     description: "霊魂の力をまとうヴェール",
-    defenseBonus: 16, magicBonus: 12,
+    defenseBonus: 48, magicBonus: 36,
     specialEffect: { type: "status_resist_all", value: 20, label: "全状態異常耐性+20%" },
   },
   {
@@ -407,7 +407,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "lizard_hide", qty: 2 }, { id: "iron_ore", qty: 2 }],
     goldCost: 650,
     description: "竜鱗を編み込んだ鎖鎧",
-    defenseBonus: 26,
+    defenseBonus: 78,
     specialEffect: { type: "fire_on_hit", value: 6, label: "物理攻撃に炎ダメージ+6" },
   },
   {
@@ -417,7 +417,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "orc_tusk", qty: 2 }, { id: "stone", qty: 3 }],
     goldCost: 600,
     description: "オークの牙で補強された鎧",
-    defenseBonus: 25,
+    defenseBonus: 75,
     specialEffect: { type: "damage_reflect", value: 10, label: "ダメージ10%反射" },
   },
 
@@ -429,7 +429,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "golem_core", qty: 2 }, { id: "rare_crystal", qty: 1 }],
     goldCost: 2500,
     description: "ゴーレムのコアを核にした絶対防御の盾鎧",
-    defenseBonus: 50,
+    defenseBonus: 150,
     specialEffect: { type: "damage_reflect", value: 20, label: "ダメージ20%反射" },
   },
   {
@@ -439,7 +439,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "rare_crystal", qty: 1 }, { id: "magic_stone", qty: 3 }],
     goldCost: 2450,
     description: "レアクリスタルを織り込んだ法衣",
-    defenseBonus: 25, magicBonus: 30,
+    defenseBonus: 75, magicBonus: 90,
     specialEffect: { type: "spell_power_up", value: 25, label: "魔法威力+25%" },
   },
   {
@@ -449,7 +449,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "dark_crystal", qty: 1 }, { id: "mage_robe_frag", qty: 2 }],
     goldCost: 2500,
     description: "闇のクリスタルをまとう不気味な外套",
-    defenseBonus: 32, statusResist: 0.30,
+    defenseBonus: 96, statusResist: 0.30,
     specialEffect: { type: "status_resist_all", value: 35, label: "全状態異常耐性+35%" },
   },
   {
@@ -459,7 +459,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "dragon_scale", qty: 3 }, { id: "iron_ore", qty: 2 }],
     goldCost: 2700,
     description: "竜鱗を全身に纏った重装鎧",
-    defenseBonus: 55,
+    defenseBonus: 165,
     specialEffect: { type: "fire_on_hit", value: 12, label: "物理攻撃に炎ダメージ+12" },
   },
   {
@@ -469,7 +469,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     materials: [{ id: "crystal_shard", qty: 3 }, { id: "rare_crystal", qty: 1 }],
     goldCost: 2650,
     description: "輝くクリスタルで編まれた守りの盾鎧",
-    defenseBonus: 48, statusResist: 0.25,
+    defenseBonus: 144, statusResist: 0.25,
     specialEffect: { type: "mp_cost_reduce", value: 15, label: "MP消費-15%" },
   },
 ];
