@@ -112,6 +112,7 @@ function BattlePageInner() {
   const floorKey   = isMaterialMode ? "rpg_material_floor" : isGoldMode ? "rpg_gold_floor" : "rpg_floor";
   const victoryKey = isMaterialMode ? "rpg_material_victories" : isGoldMode ? "rpg_gold_victories" : VICTORY_KEY;
   const dungeonLabel = isMaterialMode ? "🪨 素材ダンジョン" : isGoldMode ? "💰 ゴールドダンジョン" : "🗺️";
+  const isFlatDungeon = isMaterialMode || isGoldMode; // 階層なし（常に固定難易度）
 
   // ── Display state ──────────────────────────────────────
   const [player, setPlayer]             = useState<PlayerStats | null>(null);
@@ -224,7 +225,7 @@ function BattlePageInner() {
   // ── Victory check ──────────────────────────────────────
   function checkVictory(updatedEnemies: ActiveEnemy[]): boolean {
     if (!updatedEnemies.every(e => e.hp <= 0)) return false;
-    const nextFloor = advanceFloor(floorKey);
+    const nextFloor = isFlatDungeon ? 1 : advanceFloor(floorKey);
     const goldMult = isMaterialMode ? 0.5 : isGoldMode ? 3 : 1;
     const totalGold = Math.round(updatedEnemies.reduce((s, e) => s + e.goldReward, 0) * goldMult);
     addGold(totalGold);
@@ -260,7 +261,7 @@ function BattlePageInner() {
       `${totalGold}Gてにいれた！`,
       ...dropMsgs,
       `ポーション1個もらった！`,
-      `${nextFloor}階へ進む…`,
+      ...(isFlatDungeon ? [] : [`${nextFloor}階へ進む…`]),
     ], "victory");
     return true;
   }
@@ -707,8 +708,8 @@ function BattlePageInner() {
         };
       });
 
-      const currentFloor = getFloor(floorKey);
-      const boss = currentFloor % 5 === 0;
+      const currentFloor = isFlatDungeon ? 1 : getFloor(floorKey);
+      const boss = !isFlatDungeon && currentFloor % 5 === 0;
       const grp = getFloorEnemyGroup(level, currentFloor, { goldDungeon: isGoldMode });
       const vic = parseInt(localStorage.getItem(victoryKey) ?? "0", 10);
       const availableSpells = getAvailableSpells(level, job);
@@ -1075,7 +1076,7 @@ function BattlePageInner() {
         {/* フロア + ターン順 */}
         <div className="flex justify-between items-start px-1">
           <span className={`text-sm font-bold ${isBossFloor ? "text-red-400 animate-pulse" : isRareFloor ? "text-yellow-300 animate-pulse" : "text-yellow-300"}`}>
-            {isBossFloor ? "⚠️ BOSS " : isRareFloor ? "✨ レア！ " : ""}{dungeonLabel} {floor}階
+            {isBossFloor ? "⚠️ BOSS " : isRareFloor ? "✨ レア！ " : ""}{dungeonLabel}{isFlatDungeon ? "" : ` ${floor}階`}
           </span>
           <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
             {turnOrder.map((a, i) => (
