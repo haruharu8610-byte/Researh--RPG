@@ -583,6 +583,9 @@ export default function BattlePage() {
           const upd = partyRef.current.map(m => m.id === target.id ? { ...m, hp: Math.max(0, m.hp - dmg) } : m);
           partyRef.current = upd; syncPartyState();
           flashParty(target.id);
+          if (playerHpRef.current <= 0 && upd.every(m => m.hp <= 0)) {
+            pushMessages([...msgs, "やられてしまった…"], "defeat"); return;
+          }
         }
       }
     } else {
@@ -626,6 +629,9 @@ export default function BattlePage() {
         });
         partyRef.current = upd; syncPartyState();
         flashParty(target.id);
+        if (playerHpRef.current <= 0 && upd.every(m => m.hp <= 0)) {
+          pushMessages([...msgs, "やられてしまった…"], "defeat"); return;
+        }
       }
     }
 
