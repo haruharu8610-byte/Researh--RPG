@@ -13,6 +13,10 @@ import { getEquippedWeapon, getEquippedArmor, getEquipmentEffect, getSeriesSetBo
 import { calcPlayerStats, getFloor } from "@/lib/battle";
 import { syncPlayerState } from "@/lib/playerState";
 import { calcTotalPoints } from "@/lib/exp";
+import {
+  checkStudyStreak, getStudyStreak, checkStudyMilestones, getCurrentMilestone, getMilestoneBonus,
+  grantStudyTickets, getStudyTickets, consumeStudyTicket,
+} from "@/lib/study";
 
 type Stats = {
   totalTasks: number;
@@ -43,6 +47,8 @@ export default function GamePage() {
   const [equippedWeaponId, setEquippedWeaponId] = useState<string | null>(null);
   const [equippedArmorId,  setEquippedArmorId]  = useState<string | null>(null);
   const [goldDungeonUses, setGoldDungeonUses] = useState(0);
+  const [studyStreak, setStudyStreak] = useState(0);
+  const [studyTickets, setStudyTickets] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -51,6 +57,8 @@ export default function GamePage() {
     setEquippedWeaponId(getEquippedWeapon()?.id ?? null);
     setEquippedArmorId(getEquippedArmor()?.id ?? null);
     setGoldDungeonUses(getGoldDungeonUsesLeft());
+    setStudyStreak(getStudyStreak());
+    setStudyTickets(getStudyTickets());
   }, []);
 
   function handleGoldDungeonClick() {
@@ -62,6 +70,17 @@ export default function GamePage() {
     consumeGoldDungeonUse();
     setGoldDungeonUses(getGoldDungeonUsesLeft());
     window.location.href = "/game/battle?mode=gold";
+  }
+
+  function handleStudyDungeonClick() {
+    if (getStudyTickets() <= 0) {
+      setBonusMsg("学習チケットがありません。自習を30分行うとチケットが1枚もらえます📚");
+      setTimeout(() => setBonusMsg(null), 4000);
+      return;
+    }
+    consumeStudyTicket();
+    setStudyTickets(getStudyTickets());
+    window.location.href = "/game/battle?mode=study";
   }
 
   function handleJobChange(j: JobClass) {
@@ -99,13 +118,26 @@ export default function GamePage() {
       if (loginBonus.festivalBonus > 0) msgs.push(`🎉フェス限定ログインボーナス +${loginBonus.festivalBonus}G！`);
     }
     if (taskGold  > 0) msgs.push(`タスク完了ボーナス +${taskGold}G！`);
-    if (study.gold > 0) msgs.push(`自習ボーナス +${study.gold}G +${study.minutes}EXP！📚`);
+    if (study.gold > 0) {
+      msgs.push(`自習ボーナス +${study.gold}G +${study.minutes}EXP！📚`);
+
+      const streakResult = checkStudyStreak();
+      if (streakResult.bonus > 0) msgs.push(`📚自習継続ボーナス +${streakResult.bonus}G！（${streakResult.streak}日連続）`);
+
+      const milestoneRewards = checkStudyMilestones(data.studyTotalMinutes ?? 0);
+      for (const r of milestoneRewards) msgs.push(`🏅称号「${r.title}」獲得！ +${r.bonusGold}G！`);
+
+      const ticketsEarned = grantStudyTickets(study.minutes);
+      if (ticketsEarned > 0) msgs.push(`🎫学習チケット+${ticketsEarned}枚！`);
+    }
     if (msgs.length) {
       setBonusMsg(msgs.join("　"));
       setTimeout(() => setBonusMsg(null), 4000);
     }
     setGold(getGold());
     setLoginStreak(getLoginStreak());
+    setStudyStreak(getStudyStreak());
+    setStudyTickets(getStudyTickets());
   }, []);
 
   useEffect(() => {
@@ -152,10 +184,14 @@ export default function GamePage() {
   const armor  = getEquippedArmor();
   const craftEffect = getEquipmentEffect(weapon, armor);
   const setBonus = getSeriesSetBonus(weapon, armor);
+  const studyBonus = getMilestoneBonus(stats.studyTotalMinutes ?? 0);
+  const studyTitle = getCurrentMilestone(stats.studyTotalMinutes ?? 0)?.title ?? null;
   const playerStats = calcPlayerStats(
     level, jobClass,
-    (weapon?.attackBonus ?? 0) + (setBonus?.attack ?? 0), (weapon?.magicBonus ?? 0) + (setBonus?.magic ?? 0),
-    (armor?.defenseBonus ?? 0) + (setBonus?.defense ?? 0), armor?.magicBonus ?? 0,
+    (weapon?.attackBonus ?? 0) + (setBonus?.attack ?? 0) + studyBonus.attack,
+    (weapon?.magicBonus ?? 0) + (setBonus?.magic ?? 0) + studyBonus.magic,
+    (armor?.defenseBonus ?? 0) + (setBonus?.defense ?? 0) + studyBonus.defense,
+    armor?.magicBonus ?? 0,
     armor?.statusResist ?? 0, craftEffect,
   );
 
@@ -196,6 +232,9 @@ export default function GamePage() {
             {loginStreak > 0 && (
               <span className="text-orange-300 text-xs font-bold" title="連続ログイン日数">🔥{loginStreak}日</span>
             )}
+            {studyStreak > 0 && (
+              <span className="text-sky-300 text-xs font-bold" title="自習継続日数">📚{studyStreak}日</span>
+            )}
             <button onClick={handleLogout} className="text-xs text-gray-500 hover:text-gray-300">ログアウト</button>
           </div>
         </div>
@@ -216,6 +255,9 @@ export default function GamePage() {
             <div className="h-3 rounded-full bg-gray-800">
               <div className="h-3 rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${exp}%` }} />
             </div>
+            {studyTitle && (
+              <div className="text-center text-xs text-sky-300 font-bold pt-1">🏅「{studyTitle}」</div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center">
@@ -282,6 +324,14 @@ export default function GamePage() {
           >
             💰 ゴールドダンジョン
             <div className="text-[10px] font-normal text-amber-400 mt-0.5">本日残り {goldDungeonUses} 回</div>
+          </button>
+          <button
+            onClick={handleStudyDungeonClick}
+            disabled={studyTickets <= 0}
+            className="rounded-xl border border-sky-500 bg-sky-950 py-3 text-sm font-bold text-sky-300 hover:bg-sky-900 disabled:opacity-40 transition-colors"
+          >
+            📚 学習ダンジョン
+            <div className="text-[10px] font-normal text-sky-400 mt-0.5">🎫 チケット {studyTickets} 枚（自習30分で1枚）</div>
           </button>
           <button
             onClick={() => router.push("/game/gacha")}

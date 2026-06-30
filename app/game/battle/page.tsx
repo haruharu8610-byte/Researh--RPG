@@ -121,10 +121,11 @@ function BattlePageInner() {
   const modeParam = searchParams.get("mode");
   const isMaterialMode = modeParam === "material";
   const isGoldMode     = modeParam === "gold";
-  const floorKey   = isMaterialMode ? "rpg_material_floor" : isGoldMode ? "rpg_gold_floor" : "rpg_floor";
-  const victoryKey = isMaterialMode ? "rpg_material_victories" : isGoldMode ? "rpg_gold_victories" : VICTORY_KEY;
-  const dungeonLabel = isMaterialMode ? "🪨 素材ダンジョン" : isGoldMode ? "💰 ゴールドダンジョン" : "🗺️";
-  const isFlatDungeon = isMaterialMode || isGoldMode; // 階層なし（常に固定難易度）
+  const isStudyMode    = modeParam === "study";
+  const floorKey   = isMaterialMode ? "rpg_material_floor" : isGoldMode ? "rpg_gold_floor" : isStudyMode ? "rpg_study_floor" : "rpg_floor";
+  const victoryKey = isMaterialMode ? "rpg_material_victories" : isGoldMode ? "rpg_gold_victories" : isStudyMode ? "rpg_study_victories" : VICTORY_KEY;
+  const dungeonLabel = isMaterialMode ? "🪨 素材ダンジョン" : isGoldMode ? "💰 ゴールドダンジョン" : isStudyMode ? "📚 学習ダンジョン" : "🗺️";
+  const isFlatDungeon = isMaterialMode || isGoldMode || isStudyMode; // 階層なし（常に固定難易度）
   const forcedEnemyId = isMaterialMode ? (searchParams.get("enemy") ?? undefined) : undefined;
 
   // ── Display state ──────────────────────────────────────
@@ -264,7 +265,8 @@ function BattlePageInner() {
     const goldMult = isMaterialMode ? 0.5 : isGoldMode ? 3 : 1;
     const totalGold = Math.round(updatedEnemies.reduce((s, e) => s + e.goldReward, 0) * goldMult);
     addGold(totalGold);
-    const totalExp = updatedEnemies.reduce((s, e) => s + e.expReward, 0);
+    const expMult = isStudyMode ? 2 : 1;
+    const totalExp = Math.round(updatedEnemies.reduce((s, e) => s + e.expReward, 0) * expMult);
     addBattleExp(totalExp);
     addInventory("potion", 1);
     const newVic = victoriesRef.current + 1;
@@ -272,7 +274,7 @@ function BattlePageInner() {
     setVictories(newVic);
     localStorage.setItem(victoryKey, String(newVic));
     setFloor(nextFloor);
-    if (playerRef.current && !isMaterialMode && !isGoldMode) {
+    if (playerRef.current && !isMaterialMode && !isGoldMode && !isStudyMode) {
       syncPlayerState({
         level: playerRef.current.level, jobClass: playerRef.current.jobClass,
         weaponId: getEquippedWeapon()?.id ?? null, armorId: getEquippedArmor()?.id ?? null,
