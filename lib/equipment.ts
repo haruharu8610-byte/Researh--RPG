@@ -188,6 +188,21 @@ export function getOwnedArmors(): OwnedShopItem[] {
     .map(i => ({ ...i, qty: entries.find(e => e.id === i.id)?.qty ?? 0 }));
 }
 
+/** 図鑑用：所持の有無に関わらず武器を全件返す（craftedOwnedIdsはクラフト済みレシピのid一覧） */
+export function getCatalogWeapons(craftedOwnedIds: string[] = []): OwnedShopItem[] {
+  const entries = getOwnedEntries(OWNED_WEAPONS_KEY);
+  return allItems()
+    .filter(i => i.category === "weapon")
+    .map(i => ({ ...i, qty: entries.find(e => e.id === i.id)?.qty ?? (craftedOwnedIds.includes(i.id) ? 1 : 0) }));
+}
+/** 図鑑用：所持の有無に関わらず防具を全件返す */
+export function getCatalogArmors(craftedOwnedIds: string[] = []): OwnedShopItem[] {
+  const entries = getOwnedEntries(OWNED_ARMORS_KEY);
+  return allItems()
+    .filter(i => i.category === "armor")
+    .map(i => ({ ...i, qty: entries.find(e => e.id === i.id)?.qty ?? (craftedOwnedIds.includes(i.id) ? 1 : 0) }));
+}
+
 /** 装備の売却額（購入価格の50%。フェス限定・クラフト品は売却不可） */
 export function sellPriceFor(item: ShopItem): number {
   return Math.round(item.cost * 0.5);

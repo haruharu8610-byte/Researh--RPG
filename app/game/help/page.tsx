@@ -1,0 +1,138 @@
+"use client";
+
+export const dynamic = "force-dynamic";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Section = { title: string; body: string[] };
+
+const SECTIONS: Section[] = [
+  {
+    title: "🎮 このゲームについて",
+    body: [
+      "研究タスクマネージャーでのタスク達成・自習時間が、このRPGのゴールド（G）や経験値（EXP）に変換されます。",
+      "勉強や研究を進めるほどキャラクターが強くなる仕組みです。",
+    ],
+  },
+  {
+    title: "📈 レベルとEXP",
+    body: [
+      "EXPはタスク完了ポイント＋自習時間（1分=1EXP）の合計で決まります。",
+      "100EXPごとに1レベル上昇。レベルが上がるとHP・MP・攻撃力・防御力・魔力・素早さが自動で強化されます。",
+    ],
+  },
+  {
+    title: "💰 ゴールドの集め方",
+    body: [
+      "・ログインボーナス：1日1回。連続ログインするほど増加（最大7日で頭打ち、50G→350G）",
+      "・タスク完了ボーナス：タスク1件完了につき300G",
+      "・自習ボーナス：自習1分につき1G（同時に1EXPも付与）",
+      "・バトルの討伐報酬、換金専用アイテムの売却",
+      "・毎月1〜7日の「ガチャフェス」期間はログインボーナスに+300G",
+    ],
+  },
+  {
+    title: "⚔️ ダンジョンの種類",
+    body: [
+      "🗺️ 通常ダンジョン：階層を進みながら戦う、メインの冒険。5階ごとにボスが出現。",
+      "🪨 素材ダンジョン：階層なし・固定難易度。素材ドロップ率2.5倍。倒したことがある敵（レア除く）を選んで挑戦できます。",
+      "💰 ゴールドダンジョン：階層なし・1日3回まで。ゴールド報酬3倍。専用レアモンスターが低確率で出現し、高額で売れる換金アイテムを落とします。",
+    ],
+  },
+  {
+    title: "🗡️ バトルの基本",
+    body: [
+      "コマンドは「たたかう」「わざ」「まほう」「どうぐ」「にげる」。",
+      "「わざ」は武器による物理技で、MPを消費します。武器の属性と技の属性が一致すると大ダメージ（1.4倍）。",
+      "「まほう」は炎・水・風・土などの属性魔法、状態異常魔法、回復・バフ魔法（バイキルト＝攻撃力アップ、スクルト＝守備力アップ、ピオリム＝素早さアップ）。",
+      "攻撃・わざ・まほうは低確率（12%）で会心の一撃が発生し、ダメージが1.8倍になります。",
+      "仲間がいる場合、仲間のターンも自分でコマンドを選んで操作できます。",
+      "レジェンド武器を装備していると、バトル中1回だけ使える専用の「ひっさつ技」が使用可能になります。",
+    ],
+  },
+  {
+    title: "🎽 装備とそうび変更",
+    body: [
+      "ショップ・ガチャ・クラフトで武器や防具を入手できます。同じ装備は重複所持でき、そうび変更画面で個数が確認できます。",
+      "そうび変更画面では、自分だけでなく仲間にも自由に武器・防具を装備させられます。",
+      "武器と防具が同じ「シリーズ」だとセットボーナスが発動し、レアリティが高いほど効果が強力になります。",
+      "エピック・レジェンドの装備を売却しようとすると、誤操作防止の確認画面が表示されます。",
+    ],
+  },
+  {
+    title: "🎰 ガチャ",
+    body: [
+      "どうぐ・武器・防具の3種類のガチャがあります（1回100〜300G、10連で割引なしの10倍）。",
+      "レア度が高いほど排出率は低くなりますが、低確率で「確定演出」が発生し、最高レアリティが1つ保証されます。",
+      "10連ガチャは、レアな装備が1つも出なかった場合にエピック以上が1つ保証されます。",
+      "毎月1〜7日は「ガチャフェス」期間で、レア排出率が大幅アップし、フェス限定の最強装備も出現します。",
+      "武器・防具ガチャで手に入れたものは自動装備されず、そうび変更画面で選んで装備します。",
+    ],
+  },
+  {
+    title: "🔨 クラフト",
+    body: [
+      "モンスターのドロップ素材を使って、ショップには売っていない専用装備を作成できます。",
+    ],
+  },
+  {
+    title: "👥 なかま",
+    body: [
+      "ゴールドで仲間を雇い、最大2人までパーティに加えられます。",
+      "仲間にも武器・防具を装備させることができ、バトル中は仲間自身のコマンドを選んで操作します。",
+    ],
+  },
+  {
+    title: "📖 図鑑",
+    body: [
+      "持っている・持っていないに関わらず、すべての武器・防具・モンスターの情報を確認できます。",
+      "所持している装備は個数が表示され、倒したことのあるモンスターは詳細情報が見られます。",
+    ],
+  },
+  {
+    title: "🏆 ランキング",
+    body: [
+      "他のプレイヤーのレベル・職業・装備・到達階がリアルタイムで反映されます（通常ダンジョンの進行のみ対象）。",
+    ],
+  },
+];
+
+export default function HelpPage() {
+  const router = useRouter();
+  const [openIdx, setOpenIdx] = useState<number | null>(0);
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 p-4 font-mono">
+      <div className="w-full max-w-lg space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-emerald-300">❓ ヘルプ</h1>
+          <button onClick={() => router.push("/game")} className="text-xs text-gray-500 hover:text-gray-300">もどる</button>
+        </div>
+
+        <p className="text-xs text-gray-500">ゲームの遊び方・各種設定の説明です。気になる項目をタップしてください。</p>
+
+        <div className="space-y-2">
+          {SECTIONS.map((s, i) => (
+            <div key={s.title} className="rounded-xl border border-gray-700 bg-gray-900 overflow-hidden">
+              <button
+                onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                className="w-full flex items-center justify-between px-4 py-3 text-left"
+              >
+                <span className="text-sm font-bold text-white">{s.title}</span>
+                <span className="text-gray-500 text-xs">{openIdx === i ? "▲" : "▼"}</span>
+              </button>
+              {openIdx === i && (
+                <div className="px-4 pb-3 space-y-1.5">
+                  {s.body.map((line, j) => (
+                    <p key={j} className="text-xs text-gray-300 leading-relaxed">{line}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

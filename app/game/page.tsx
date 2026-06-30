@@ -300,6 +300,18 @@ export default function GamePage() {
           >
             🏆 リアルタイムランキング
           </button>
+          <button
+            onClick={() => router.push("/game/codex")}
+            className="rounded-xl border border-cyan-600 bg-cyan-950 py-3 text-sm font-bold text-cyan-300 hover:bg-cyan-900 transition-colors"
+          >
+            📖 図鑑
+          </button>
+          <button
+            onClick={() => router.push("/game/help")}
+            className="rounded-xl border border-emerald-600 bg-emerald-950 py-3 text-sm font-bold text-emerald-300 hover:bg-emerald-900 transition-colors"
+          >
+            ❓ ヘルプ
+          </button>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
