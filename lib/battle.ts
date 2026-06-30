@@ -313,6 +313,53 @@ export const ENEMIES: EnemyType[] = [
     dropTable: [{ materialId: "dark_crystal", chance: 0.80 }, { materialId: "legend_ore", chance: 0.30 }, { materialId: "angel_feather", chance: 0.15 }],
   },
 
+  // ── 超終盤（Lv16〜） ────────────────────────────────────────
+  {
+    id: "wraith_lord", name: "ワイトキング", maxHp: 260, attack: 60, defense: 38, magic: 45,
+    expReward: 380, goldReward: 450, minLevel: 16,
+    color: 0xd1d5db, shape: "skeleton", element: "none",
+    physResist: 0.9, magicResist: 0.8, speed: 16,
+    statusResist: { poison: 1.0, paralysis: 0.9, sleep: 1.0, confuse: 0.7 },
+    spellIds: ["rarihoma", "begiragon", "mahi"],
+    dropTable: [{ materialId: "bone_shard", chance: 0.80 }, { materialId: "dark_crystal", chance: 0.35 }],
+  },
+  {
+    id: "thunder_dragon", name: "らいじんのドラゴン", maxHp: 300, attack: 70, defense: 40, magic: 50,
+    expReward: 450, goldReward: 500, minLevel: 18,
+    color: 0x60a5fa, shape: "dragon", element: "wind",
+    physResist: 1, magicResist: 0.5, speed: 22,
+    statusResist: { poison: 0.7, paralysis: 0.7, sleep: 0.8, confuse: 0.7 },
+    spellIds: ["raiden", "baguross", "mahi"],
+    dropTable: [{ materialId: "dragon_scale", chance: 0.70 }, { materialId: "rare_crystal", chance: 0.25 }, { materialId: "angel_feather", chance: 0.10 }],
+  },
+  {
+    id: "golem_titan", name: "タイタンゴーレム", maxHp: 350, attack: 65, defense: 60, magic: 20,
+    expReward: 520, goldReward: 600, minLevel: 20,
+    color: 0x57534e, shape: "golem", element: "earth",
+    physResist: 0.7, magicResist: 1, speed: 6,
+    statusResist: { poison: 0.9, paralysis: 0.9, sleep: 0.9, confuse: 0.9 },
+    spellIds: ["begiragon"],
+    dropTable: [{ materialId: "golem_core", chance: 0.60 }, { materialId: "legend_ore", chance: 0.25 }],
+  },
+  {
+    id: "fallen_angel", name: "だらくてんし", maxHp: 380, attack: 60, defense: 45, magic: 90,
+    expReward: 650, goldReward: 700, minLevel: 22,
+    color: 0xfca5a5, shape: "mage", element: "fire",
+    physResist: 1, magicResist: 0.4, speed: 20,
+    statusResist: { poison: 0.9, paralysis: 0.9, sleep: 0.9, confuse: 0.8 },
+    spellIds: ["merazoma", "gigabreak", "rarihoma"],
+    dropTable: [{ materialId: "angel_feather", chance: 0.45 }, { materialId: "dark_crystal", chance: 0.45 }],
+  },
+  {
+    id: "arch_demon", name: "だいまおう", maxHp: 450, attack: 85, defense: 50, magic: 75,
+    expReward: 800, goldReward: 900, minLevel: 25,
+    color: 0x450a0a, shape: "orc", element: "none",
+    physResist: 0.7, magicResist: 0.5, speed: 14,
+    statusResist: { poison: 0.95, paralysis: 0.95, sleep: 0.98, confuse: 0.95 },
+    spellIds: ["gigabreak", "merazoma", "mahyado", "rarihoma"],
+    dropTable: [{ materialId: "dark_crystal", chance: 0.85 }, { materialId: "legend_ore", chance: 0.45 }, { materialId: "angel_feather", chance: 0.25 }],
+  },
+
   // ── レアモンスター ──────────────────────────────────────────
   {
     id: "slime_rare", name: "はぐれメタル",
@@ -367,6 +414,17 @@ export const ENEMIES: EnemyType[] = [
     statusResist: { poison: 0.99, paralysis: 0.99, sleep: 0.99, confuse: 0.99 },
     spellIds: [],
     dropTable: [{ materialId: "legend_ore", chance: 0.80 }, { materialId: "angel_feather", chance: 0.40 }],
+    isRare: true,
+  },
+  {
+    id: "diamond_slime", name: "ダイヤモンドスライム",
+    maxHp: 8, attack: 6, defense: 255, magic: 0,
+    expReward: 6000, goldReward: 3000, minLevel: 16,
+    color: 0xa5f3fc, shape: "slime", element: "none",
+    physResist: 0.01, magicResist: 0.01, speed: 70,
+    statusResist: { poison: 0.99, paralysis: 0.99, sleep: 0.99, confuse: 0.99 },
+    spellIds: [],
+    dropTable: [{ materialId: "legend_ore", chance: 1.0 }, { materialId: "angel_feather", chance: 0.60 }],
     isRare: true,
   },
 ];

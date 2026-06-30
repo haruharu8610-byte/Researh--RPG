@@ -14,6 +14,8 @@ export type ShopItem = {
   /** 敵に投げて使うアイテム用：固定ダメージ・状態異常付与 */
   damage?: number;
   enemyStatus?: { status: StatusEffect; baseChance: number; turns: number };
+  /** フェス限定：通常ショップには並ばず、フェス期間のガチャでのみ排出 */
+  festivalOnly?: boolean;
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -30,6 +32,18 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "dark_blade",    name: "やみのつるぎ",     category: "weapon", cost: 1800, description: "闇の力を持つ呪いの剣",     attackBonus: 38, magicBonus: 10, rarity: "rare"    },
   { id: "dragon_sword",  name: "ドラゴンのつるぎ", category: "weapon", cost: 2000, description: "竜の力を宿す最強の剣",     attackBonus: 45, rarity: "epic"    },
   { id: "sage_staff",    name: "けんじゃのつえ",   category: "weapon", cost: 3000, description: "賢者が使う最高の魔法の杖", attackBonus: 15, magicBonus: 55, rarity: "epic"    },
+  { id: "war_hammer",    name: "ウォーハンマー",   category: "weapon", cost: 1100, description: "両手で振るう巨大な槌",     attackBonus: 28, rarity: "rare"    },
+  { id: "twin_dagger",   name: "ツインダガー",     category: "weapon", cost: 950,  description: "二刀流の短剣。手数で攻める", attackBonus: 26, magicBonus: 4, rarity: "rare"    },
+  { id: "storm_bow",     name: "あらしの弓",       category: "weapon", cost: 1300, description: "風を呼ぶ強弓",             attackBonus: 30, magicBonus: 6, rarity: "rare"    },
+  { id: "void_scythe",   name: "ボイドサイズ",     category: "weapon", cost: 2400, description: "虚無を纏う大鎌",           attackBonus: 50, magicBonus: 15, rarity: "epic"    },
+  { id: "excalibur",     name: "エクスカリバー",   category: "weapon", cost: 12000, description: "選ばれし者のみが扱える聖剣", attackBonus: 100, magicBonus: 25, rarity: "legendary",
+    specialEffect: { type: "spell_power_up", value: 25, label: "魔法威力+25%" } },
+  { id: "god_blade",     name: "しんのつるぎ",     category: "weapon", cost: 15000, description: "神話の中だけに存在したという剣", attackBonus: 120, rarity: "legendary",
+    specialEffect: { type: "fire_on_hit", value: 25, label: "物理攻撃に炎ダメージ+25" } },
+  { id: "phoenix_staff", name: "フェニックスの杖", category: "weapon", cost: 13000, description: "不死鳥の炎を宿す杖",       attackBonus: 20, magicBonus: 100, rarity: "legendary",
+    specialEffect: { type: "mp_cost_reduce", value: 30, label: "MP消費-30%" } },
+  { id: "fes_blade",     name: "🎉フェスブレード",  category: "weapon", cost: 99999, description: "フェス限定の特別な剣。圧倒的な力を秘める", attackBonus: 130, magicBonus: 30, rarity: "legendary", festivalOnly: true,
+    specialEffect: { type: "spell_power_up", value: 40, label: "魔法威力+40%" } },
 
   // ── 防具 ───────────────────────────────────────────────────
   { id: "cloth_robe",    name: "ぬののローブ",     category: "armor",  cost: 80,   description: "簡素な布のローブ",                 defenseBonus: 3,  statusResist: 0.05, rarity: "common"   },
@@ -43,6 +57,15 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "silver_armor",  name: "シルバーアーマー", category: "armor",  cost: 1600, description: "銀の光る鎧 耐性+30%",              defenseBonus: 32, statusResist: 0.30, rarity: "rare"    },
   { id: "dragon_armor",  name: "ドラゴンのよろい", category: "armor",  cost: 2500, description: "最強の鎧 耐性+35%",                defenseBonus: 45, statusResist: 0.35, rarity: "epic"    },
   { id: "sage_robe",     name: "けんじゃのローブ", category: "armor",  cost: 3500, description: "賢者の鎧。魔法と防御を兼ね備える", defenseBonus: 30, magicBonus: 30, statusResist: 0.35, rarity: "epic"    },
+  { id: "knight_plate",  name: "ナイトプレート",   category: "armor",  cost: 1100, description: "騎士団の正装。安定した防御力",     defenseBonus: 24, statusResist: 0.22, rarity: "rare"    },
+  { id: "shadow_cloak",  name: "シャドウクローク", category: "armor",  cost: 1250, description: "気配を消す漆黒のマント",           defenseBonus: 18, magicBonus: 12, statusResist: 0.25, rarity: "rare"    },
+  { id: "guardian_shell",name: "ガーディアンシェル",category: "armor",  cost: 2200, description: "あらゆる衝撃を吸収する甲殻",       defenseBonus: 50, statusResist: 0.30, rarity: "epic"    },
+  { id: "aegis_armor",   name: "アイギスのよろい", category: "armor",  cost: 14000, description: "女神の加護を受けた絶対防御の鎧",   defenseBonus: 90, statusResist: 0.50, rarity: "legendary",
+    specialEffect: { type: "damage_reflect", value: 20, label: "ダメージ20%反射" } },
+  { id: "holy_robe",     name: "せいなるローブ",   category: "armor",  cost: 13500, description: "天界の織物で編まれた聖衣",         defenseBonus: 55, magicBonus: 50, statusResist: 0.45, rarity: "legendary",
+    specialEffect: { type: "status_resist_all", value: 60, label: "全状態異常耐性+60%" } },
+  { id: "fes_armor",     name: "🎉フェスアーマー",  category: "armor",  cost: 99999, description: "フェス限定の特別な鎧。圧倒的な守りを誇る", defenseBonus: 100, magicBonus: 40, statusResist: 0.55, rarity: "legendary", festivalOnly: true,
+    specialEffect: { type: "status_resist_all", value: 70, label: "全状態異常耐性+70%" } },
 
   // ── 消耗品（HP） ───────────────────────────────────────────
   { id: "potion",        name: "ポーション",       category: "potion", cost: 30,   description: "HPを40回復",    hpRestore: 40,  rarity: "common"   },

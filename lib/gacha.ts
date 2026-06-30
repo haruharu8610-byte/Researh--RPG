@@ -24,6 +24,7 @@ export type GachaSession = {
   results: GachaResult[];
   /** 確定演出が発生したか（最高レアリティを1つ保証） */
   guaranteed: boolean;
+  festival: boolean;
 };
 
 const RARITY_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
@@ -36,17 +37,37 @@ const RARITY_WEIGHTS: Array<{ rarity: Rarity; weight: number }> = [
   { rarity: "legendary", weight: 1  },
 ];
 
+/** フェス期間中はレア度の高い枠が大幅に出やすくなる */
+const RARITY_WEIGHTS_FESTIVAL: Array<{ rarity: Rarity; weight: number }> = [
+  { rarity: "common",    weight: 35 },
+  { rarity: "uncommon",  weight: 27 },
+  { rarity: "rare",      weight: 20 },
+  { rarity: "epic",      weight: 13 },
+  { rarity: "legendary", weight: 5  },
+];
+
 /** 確定演出（最高レアリティ保証）が出る確率 */
 const GUARANTEED_EVENT_CHANCE = 0.03;
+const GUARANTEED_EVENT_CHANCE_FESTIVAL = 0.06;
 
 const consumablePool = SHOP_ITEMS.filter(i => ["potion", "ether", "throwable"].includes(i.category));
 const weaponPool     = SHOP_ITEMS.filter(i => i.category === "weapon");
 const armorPool      = SHOP_ITEMS.filter(i => i.category === "armor");
 
+/** 毎月1日〜7日をフェス期間とする */
+export function isFestivalActive(date: Date = new Date()): boolean {
+  return date.getDate() <= 7;
+}
+
+function currentWeights(): Array<{ rarity: Rarity; weight: number }> {
+  return isFestivalActive() ? RARITY_WEIGHTS_FESTIVAL : RARITY_WEIGHTS;
+}
+
 function pickRarity(): Rarity {
-  const total = RARITY_WEIGHTS.reduce((s, w) => s + w.weight, 0);
+  const weights = currentWeights();
+  const total = weights.reduce((s, w) => s + w.weight, 0);
   let roll = Math.random() * total;
-  for (const w of RARITY_WEIGHTS) {
+  for (const w of weights) {
     if (roll < w.weight) return w.rarity;
     roll -= w.weight;
   }
@@ -54,12 +75,15 @@ function pickRarity(): Rarity {
 }
 
 function poolForRarity(kind: GachaKind, rarity: Rarity) {
+  const fest = isFestivalActive();
   if (kind === "item") {
     const mats  = MATERIALS.filter(m => m.rarity === rarity).map(ref => ({ kind: "material" as const, ref }));
-    const items = consumablePool.filter(i => i.rarity === rarity).map(ref => ({ kind: "item" as const, ref }));
+    const items = consumablePool
+      .filter(i => i.rarity === rarity && (!i.festivalOnly || fest))
+      .map(ref => ({ kind: "item" as const, ref }));
     return [...mats, ...items];
   }
-  const base = kind === "weapon" ? weaponPool : armorPool;
+  const base = (kind === "weapon" ? weaponPool : armorPool).filter(i => !i.festivalOnly || fest);
   return base.filter(i => i.rarity === rarity).map(ref => ({ kind: "item" as const, ref }));
 }
 
@@ -99,13 +123,15 @@ export function pullGacha(kind: GachaKind): GachaResult {
 
 /**
  * 複数回ガチャを引くセッション。
- * - 低確率で「確定演出」が発生し、そのガチャ種別の最高レアリティを1つ保証
+ * - 低確率で「確定演出」が発生し、そのガチャ種別の最高レアリティを1つ保証（フェス中は発生率UP）
  * - 10連以上の場合、エピック以上が1つも無ければ1枠を強制的にエピック以上に差し替え
  */
 export function pullGachaSession(kind: GachaKind, times: number): GachaSession {
+  const festival = isFestivalActive();
   const results: GachaResult[] = Array.from({ length: times }, () => drawOne(kind));
 
-  const guaranteed = Math.random() < GUARANTEED_EVENT_CHANCE;
+  const guaranteedChance = festival ? GUARANTEED_EVENT_CHANCE_FESTIVAL : GUARANTEED_EVENT_CHANCE;
+  const guaranteed = Math.random() < guaranteedChance;
   if (guaranteed) {
     const idx = Math.floor(Math.random() * times);
     results[idx] = drawAtRarity(kind, highestAvailableRarity(kind), true);
@@ -119,5 +145,27 @@ export function pullGachaSession(kind: GachaKind, times: number): GachaSession {
     }
   }
 
-  return { results, guaranteed };
+  return { results, guaranteed, festival };
+}
+
+// ── 排出率・排出一覧表示用 ─────────────────────────────────────
+export type RarityRate = { rarity: Rarity; percent: number };
+
+export function getRarityRates(): RarityRate[] {
+  const weights = currentWeights();
+  const total = weights.reduce((s, w) => s + w.weight, 0);
+  return weights.map(w => ({ rarity: w.rarity, percent: Math.round((w.weight / total) * 1000) / 10 }));
+}
+
+export type GachaPoolEntry = { name: string; festivalOnly: boolean };
+
+export function getGachaPool(kind: GachaKind): Record<Rarity, GachaPoolEntry[]> {
+  const result = {} as Record<Rarity, GachaPoolEntry[]>;
+  for (const r of RARITY_ORDER) {
+    result[r] = poolForRarity(kind, r).map(p => ({
+      name: p.ref.name,
+      festivalOnly: "festivalOnly" in p.ref ? !!p.ref.festivalOnly : false,
+    }));
+  }
+  return result;
 }

@@ -4,7 +4,10 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { pullGachaSession, GACHA_COST, GACHA_KIND_LABEL, type GachaKind, type GachaResult } from "@/lib/gacha";
+import {
+  pullGachaSession, GACHA_COST, GACHA_KIND_LABEL, isFestivalActive, getRarityRates, getGachaPool,
+  type GachaKind, type GachaResult,
+} from "@/lib/gacha";
 import { getGold, spendGold } from "@/lib/gold";
 import { addMaterial } from "@/lib/materials";
 import { addInventory, addOwnedWeapon, addOwnedArmor, type ShopItem } from "@/lib/equipment";
@@ -21,8 +24,10 @@ export default function GachaPage() {
   const [visibleCount, setVisibleCount] = useState(0);
   const [spinGuaranteed, setSpinGuaranteed] = useState(false);
   const [message, setMessage] = useState("");
+  const [showPool, setShowPool] = useState(false);
+  const [festival, setFestival] = useState(false);
 
-  useEffect(() => { setGold(getGold()); }, []);
+  useEffect(() => { setGold(getGold()); setFestival(isFestivalActive()); }, []);
 
   function showMsg(msg: string) {
     setMessage(msg); setTimeout(() => setMessage(""), 3000);
@@ -75,6 +80,12 @@ export default function GachaPage() {
             <button onClick={() => router.push("/game")} className="text-xs text-gray-500 hover:text-gray-300">もどる</button>
           </div>
         </div>
+
+        {festival && (
+          <div className="rounded-lg border-2 border-yellow-500 bg-gradient-to-r from-yellow-900/40 via-pink-900/40 to-yellow-900/40 px-4 py-2 text-center">
+            <span className="text-sm font-bold text-yellow-300 animate-pulse">🎉 ガチャフェス開催中！レア排出率UP＆フェス限定装備が出現中（毎月1〜7日）</span>
+          </div>
+        )}
 
         {/* タブ */}
         <div className="grid grid-cols-3 gap-2">
@@ -156,6 +167,45 @@ export default function GachaPage() {
                 })}
               </div>
             </>
+          )}
+        </div>
+
+        {/* 排出率 */}
+        <div className="rounded-xl border border-gray-700 bg-gray-900 p-3">
+          <div className="text-xs font-bold text-gray-300 mb-2">排出確率（{tab === "item" ? "どうぐ" : tab === "weapon" ? "武器" : "防具"}ガチャ）</div>
+          <div className="grid grid-cols-5 gap-1 text-center">
+            {getRarityRates().map(r => (
+              <div key={r.rarity} className="rounded bg-gray-800 py-1.5">
+                <div className={`text-[10px] font-bold ${RARITY_COLOR[r.rarity]}`}>{RARITY_LABEL[r.rarity]}</div>
+                <div className="text-xs text-white mt-0.5">{r.percent}%</div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowPool(v => !v)}
+            className="mt-2 w-full text-[10px] text-gray-400 hover:text-white border border-gray-700 rounded py-1"
+          >
+            {showPool ? "排出一覧を閉じる ▲" : "排出一覧を見る ▼"}
+          </button>
+          {showPool && (
+            <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+              {(["legendary","epic","rare","uncommon","common"] as const).map(r => {
+                const entries = getGachaPool(tab)[r];
+                if (!entries.length) return null;
+                return (
+                  <div key={r}>
+                    <div className={`text-[10px] font-bold ${RARITY_COLOR[r]}`}>{RARITY_LABEL[r]}</div>
+                    <div className="text-[10px] text-gray-400 leading-relaxed">
+                      {entries.map((e, i) => (
+                        <span key={i}>
+                          {e.name}{e.festivalOnly ? "🎉" : ""}{i < entries.length - 1 ? "、" : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 

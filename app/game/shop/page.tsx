@@ -57,7 +57,7 @@ export default function ShopPage() {
   }
 
   const shopItems = SHOP_ITEMS.filter(i =>
-    tab === "item" ? ["potion","ether","throwable"].includes(i.category) : i.category === tab
+    !i.festivalOnly && (tab === "item" ? ["potion","ether","throwable"].includes(i.category) : i.category === tab)
   );
   const buyableMats = MATERIALS.filter(m => m.buyable);
 
