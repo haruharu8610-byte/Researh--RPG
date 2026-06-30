@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { COMPANIONS, getParty, addPartyMember, removePartyMember, isInParty, type PartyMemberData } from "@/lib/party";
 import { calcPlayerStats } from "@/lib/battle";
 import { getGold, spendGold } from "@/lib/gold";
+import { calcTotalPoints } from "@/lib/exp";
 
 const JOB_KEY = "rpg_job_class";
 
@@ -34,7 +35,7 @@ export default function PartyPage() {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         const stats = await res.json();
-        const pts = (stats.totalPoints ?? 0) + (stats.studyTotalMinutes ?? 0);
+        const pts = calcTotalPoints(stats);
         setPlayerLevel(Math.floor(pts / 100) + 1);
       } catch { /* use default level 1 */ }
     }

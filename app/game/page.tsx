@@ -12,6 +12,7 @@ import {
 import { getEquippedWeapon, getEquippedArmor, getEquipmentEffect, getSeriesSetBonus } from "@/lib/equipment";
 import { calcPlayerStats, getFloor } from "@/lib/battle";
 import { syncPlayerState } from "@/lib/playerState";
+import { calcTotalPoints } from "@/lib/exp";
 
 type Stats = {
   totalTasks: number;
@@ -23,9 +24,9 @@ type Stats = {
 
 const JOB_KEY = "rpg_job_class";
 
-// 自習1分 = 1EXP（タスクポイントと合算）
+// 総ポイント = タスク達成ポイント + 自習EXP（1分=10EXP） + バトルEXP
 function totalPoints(stats: Stats) {
-  return (stats.totalPoints ?? 0) + (stats.studyTotalMinutes ?? 0);
+  return calcTotalPoints(stats);
 }
 function calcLevel(points: number) { return Math.floor(points / 100) + 1; }
 function calcExp(points: number) { return points % 100; }
