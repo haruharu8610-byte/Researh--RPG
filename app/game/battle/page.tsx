@@ -16,7 +16,7 @@ import {
 } from "@/lib/battle";
 import {
   getEquippedWeapon, getEquippedArmor, getInventory, removeInventory, addInventory,
-  getEquipmentEffect, registerCraftedItems, SHOP_ITEMS,
+  getEquipmentEffect, registerCraftedItems, SHOP_ITEMS, type ShopItem,
 } from "@/lib/equipment";
 import { addGold } from "@/lib/gold";
 import { getParty, type PartyMemberData } from "@/lib/party";
@@ -33,8 +33,8 @@ function getCraftedIds(): string[] {
 const JOB_KEY     = "rpg_job_class";
 const VICTORY_KEY = "rpg_victories";
 
-type Phase = "intro" | "select" | "ally_targeting" | "spells" | "targeting" | "message" | "victory" | "defeat" | "ran";
-type PendingAction = { type: "attack" } | { type: "spell"; spell: Spell };
+type Phase = "intro" | "select" | "ally_targeting" | "spells" | "items" | "targeting" | "message" | "victory" | "defeat" | "ran";
+type PendingAction = { type: "attack" } | { type: "spell"; spell: Spell } | { type: "item"; item: ShopItem };
 type SelectCmd = "attack" | "magic" | "item" | "run";
 
 export type PartyMemberBattle = {
@@ -111,6 +111,8 @@ export default function BattlePage() {
   const [currentActorId, setCurrentActorId] = useState<string>("player");
   const [targetIdx, setTargetIdx]       = useState(0);
   const [allyTargetIdx, setAllyTargetIdx] = useState(0);
+  const [allyTargetBack, setAllyTargetBack] = useState<"spells" | "items">("spells");
+  const [itemIdx, setItemIdx] = useState(0);
   const [phase, setPhase]               = useState<Phase>("intro");
   const [selectCmd, setSelectCmd]       = useState<SelectCmd>("attack");
   const [messages, setMessages]         = useState<string[]>([]);
@@ -739,8 +741,21 @@ export default function BattlePage() {
           const sp = spells[spellIdx];
           pendingAction.current = { type: "spell", spell: sp };
           if (sp.target === "all" || sp.target === "all_allies") executeAction(enemies);
-          else if (sp.target === "single_ally") setPhase("ally_targeting");
+          else if (sp.target === "single_ally") { setAllyTargetBack("spells"); setAllyTargetIdx(0); setPhase("ally_targeting"); }
           else setPhase("targeting");
+        }
+        if (key === "Escape" || key === "x") setPhase("select");
+      }
+      if (phase === "items") {
+        const usable = getUsableItems();
+        if (key === "ArrowUp")   setItemIdx(i => Math.max(0, i - 1));
+        if (key === "ArrowDown") setItemIdx(i => Math.min(usable.length - 1, i + 1));
+        if (["Enter","z"].includes(key)) {
+          const sel = usable[itemIdx];
+          if (sel) {
+            pendingAction.current = { type: "item", item: sel.item };
+            setAllyTargetBack("items"); setAllyTargetIdx(0); setPhase("ally_targeting");
+          }
         }
         if (key === "Escape" || key === "x") setPhase("select");
       }
@@ -756,7 +771,7 @@ export default function BattlePage() {
         if (key === "ArrowLeft")  setAllyTargetIdx(i => (i - 1 + allyList.length) % allyList.length);
         if (key === "ArrowRight") setAllyTargetIdx(i => (i + 1) % allyList.length);
         if (["Enter","z"].includes(key)) executeAction(enemies);
-        if (key === "Escape" || key === "x") setPhase("select");
+        if (key === "Escape" || key === "x") setPhase(allyTargetBack);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -765,11 +780,19 @@ export default function BattlePage() {
 
   function getAllyList() {
     const p = player!;
-    const list: Array<{ id: string; name: string; hp: number; maxHp: number }> = [
-      { id: "player", name: `あなた(${JOB[p.jobClass]})`, hp: playerHp, maxHp: p.maxHp },
-      ...partyMembers.filter(m => m.hp > 0).map(m => ({ id: m.id, name: m.name, hp: m.hp, maxHp: m.maxHp })),
+    const list: Array<{ id: string; name: string; hp: number; maxHp: number; mp: number; maxMp: number }> = [
+      { id: "player", name: `あなた(${JOB[p.jobClass]})`, hp: playerHp, maxHp: p.maxHp, mp: playerMp, maxMp: p.maxMp },
+      ...partyMembers.filter(m => m.hp > 0).map(m => ({ id: m.id, name: m.name, hp: m.hp, maxHp: m.maxHp, mp: m.mp, maxMp: m.maxMp })),
     ];
     return list;
+  }
+
+  function getUsableItems() {
+    const inv = getInventory();
+    return inv
+      .map(entry => ({ entry, item: SHOP_ITEMS.find(i => i.id === entry.id) }))
+      .filter((x): x is { entry: typeof inv[number]; item: ShopItem } =>
+        !!x.item && (x.item.category === "potion" || x.item.category === "ether"));
   }
 
   function executeSelect(cmd: SelectCmd) {
@@ -783,31 +806,14 @@ export default function BattlePage() {
       if (!spells.length) { pushMessages(["つかえるまほうがない！"], "select"); return; }
       setSpellIdx(0); setPhase("spells");
     }
-    if (cmd === "item") useItem();
+    if (cmd === "item") {
+      if (!getUsableItems().length) { pushMessages(["どうぐがない！"], "select"); return; }
+      setItemIdx(0); setPhase("items");
+    }
     if (cmd === "run") {
       if (isBossFloor) { pushMessages(["ボスからはにげられない！"], "select"); return; }
       if (Math.random() < 0.5) pushMessages(["うまくにげられた！"], "ran");
       else pushCb(["にげられなかった！"], advanceActor);
-    }
-  }
-
-  function useItem() {
-    const inv = getInventory();
-    const potionEntry = inv.find(i => ["potion","hi_potion"].includes(i.id));
-    const etherEntry  = inv.find(i => ["ether","hi_ether"].includes(i.id));
-    if (!potionEntry && !etherEntry) { pushMessages(["どうぐがない！"], "select"); return; }
-    if (potionEntry) {
-      const item = SHOP_ITEMS.find(i => i.id === potionEntry.id)!;
-      removeInventory(potionEntry.id);
-      const newHp = Math.min(player!.maxHp, playerHpRef.current + item.hpRestore!);
-      setPlayerHp(newHp); playerHpRef.current = newHp;
-      pushCb([`${item.name}をつかった！ HPが${item.hpRestore}回復！`], advanceActor);
-    } else if (etherEntry) {
-      const item = SHOP_ITEMS.find(i => i.id === etherEntry.id)!;
-      removeInventory(etherEntry.id);
-      const newMp = Math.min(player!.maxMp, playerMpRef.current + item.mpRestore!);
-      setPlayerMp(newMp); playerMpRef.current = newMp;
-      pushCb([`${item.name}をつかった！ MPが${item.mpRestore}回復！`], advanceActor);
     }
   }
 
@@ -818,6 +824,51 @@ export default function BattlePage() {
     const aliveTarget = alive[Math.min(targetIdx, alive.length - 1)];
     let updated = [...currentEnemies];
     const msgs: string[] = [];
+
+    if (action.type === "item") {
+      const item = action.item;
+      const allyTarget = getAllyList()[Math.min(allyTargetIdx, getAllyList().length - 1)];
+      removeInventory(item.id);
+      msgs.push(`${item.name}をつかった！`);
+      if (item.hpRestore) {
+        if (allyTarget.id === "player") {
+          const before = playerHpRef.current;
+          const newHp = Math.min(player.maxHp, before + item.hpRestore);
+          setPlayerHp(newHp); playerHpRef.current = newHp;
+          msgs.push(`あなたのHPが${newHp - before}回復した！`);
+        } else {
+          let healed = 0;
+          const upd = partyRef.current.map(m => {
+            if (m.id !== allyTarget.id) return m;
+            const newHp = Math.min(m.maxHp, m.hp + item.hpRestore!);
+            healed = newHp - m.hp;
+            return { ...m, hp: newHp };
+          });
+          partyRef.current = upd; syncPartyState();
+          msgs.push(`${allyTarget.name}のHPが${healed}回復した！`);
+        }
+      }
+      if (item.mpRestore) {
+        if (allyTarget.id === "player") {
+          const before = playerMpRef.current;
+          const newMp = Math.min(player.maxMp, before + item.mpRestore);
+          setPlayerMp(newMp); playerMpRef.current = newMp;
+          msgs.push(`あなたのMPが${newMp - before}回復した！`);
+        } else {
+          let healed = 0;
+          const upd = partyRef.current.map(m => {
+            if (m.id !== allyTarget.id) return m;
+            const newMp = Math.min(m.maxMp, m.mp + item.mpRestore!);
+            healed = newMp - m.mp;
+            return { ...m, mp: newMp };
+          });
+          partyRef.current = upd; syncPartyState();
+          msgs.push(`${allyTarget.name}のMPが${healed}回復した！`);
+        }
+      }
+      pushCb(msgs, advanceActor);
+      return;
+    }
 
     if (action.type === "attack") {
       const confused = playerStatusRef.current?.type === "confuse";
@@ -1048,7 +1099,7 @@ export default function BattlePage() {
           {phase === "select"         && <p className="text-yellow-200 font-medium">コマンドを選んでください</p>}
           {phase === "targeting"      && <p className="text-yellow-200 font-medium">← → でターゲット選択　Enterで決定</p>}
           {phase === "ally_targeting" && <p className="text-yellow-200 font-medium">← → で味方選択　Enterで決定</p>}
-          {(phase === "targeting" || phase === "ally_targeting") && (
+          {phase === "targeting" && (
             <button
               onClick={(e) => { e.stopPropagation(); setPhase("spells"); }}
               className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors mt-1"
@@ -1056,7 +1107,16 @@ export default function BattlePage() {
               ← まほう選択にもどる
             </button>
           )}
+          {phase === "ally_targeting" && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setPhase(allyTargetBack); }}
+              className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors mt-1"
+            >
+              {allyTargetBack === "items" ? "← どうぐ選択にもどる" : "← まほう選択にもどる"}
+            </button>
+          )}
           {phase === "spells"         && <p className="text-yellow-200 font-medium">まほうを選んでください</p>}
+          {phase === "items"          && <p className="text-yellow-200 font-medium">どうぐを選んでください</p>}
         </div>
 
         {/* コマンド */}
@@ -1118,7 +1178,7 @@ export default function BattlePage() {
                       ev.stopPropagation(); setSpellIdx(i);
                       pendingAction.current = { type: "spell", spell: sp };
                       if (sp.target === "all" || sp.target === "all_allies") executeAction(enemies);
-                      else if (sp.target === "single_ally") { setAllyTargetIdx(0); setPhase("ally_targeting"); }
+                      else if (sp.target === "single_ally") { setAllyTargetBack("spells"); setAllyTargetIdx(0); setPhase("ally_targeting"); }
                       else setPhase("targeting");
                     }}
                     onMouseEnter={() => setSpellIdx(i)}
@@ -1144,13 +1204,50 @@ export default function BattlePage() {
           </div>
         )}
 
+        {/* どうぐ選択 */}
+        {phase === "items" && (
+          <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-200 font-bold">どうぐ選択</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setPhase("select"); }}
+                className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors"
+              >
+                ← もどる
+              </button>
+            </div>
+            <div className="space-y-1 max-h-44 overflow-y-auto">
+              {getUsableItems().map((u, i) => (
+                <button
+                  key={u.item.id}
+                  onClick={(e) => {
+                    e.stopPropagation(); setItemIdx(i);
+                    pendingAction.current = { type: "item", item: u.item };
+                    setAllyTargetBack("items"); setAllyTargetIdx(0); setPhase("ally_targeting");
+                  }}
+                  onMouseEnter={() => setItemIdx(i)}
+                  className={`w-full flex justify-between rounded px-3 py-2 text-sm ${
+                    itemIdx === i ? "bg-yellow-400 text-gray-900 font-bold" : "bg-gray-700 text-white"
+                  }`}
+                >
+                  <span>{itemIdx === i ? "▶ " : ""}{u.item.name} ×{u.entry.qty}</span>
+                  <span className="text-xs opacity-80">
+                    {u.item.hpRestore ? `HP+${u.item.hpRestore >= 9999 ? "全快" : u.item.hpRestore} ` : ""}
+                    {u.item.mpRestore ? `MP+${u.item.mpRestore >= 9999 ? "全快" : u.item.mpRestore}` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 味方ターゲット選択 */}
         {phase === "ally_targeting" && (
           <div className="rounded-xl border-2 border-yellow-700 bg-yellow-950/30 p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-yellow-200 font-bold">味方を選ぶ</span>
               <button
-                onClick={(e) => { e.stopPropagation(); setPhase("spells"); }}
+                onClick={(e) => { e.stopPropagation(); setPhase(allyTargetBack); }}
                 className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors"
               >
                 ← もどる
