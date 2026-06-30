@@ -34,7 +34,8 @@ export default function PartyPage() {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         const stats = await res.json();
-        setPlayerLevel(Math.floor(stats.totalPoints / 100) + 1);
+        const pts = (stats.totalPoints ?? 0) + (stats.studyTotalMinutes ?? 0);
+        setPlayerLevel(Math.floor(pts / 100) + 1);
       } catch { /* use default level 1 */ }
     }
     loadLevel();

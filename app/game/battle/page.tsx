@@ -633,7 +633,8 @@ export default function BattlePage() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const stats = await res.json();
-      const level  = Math.floor(stats.totalPoints / 100) + 1;
+      const pts = (stats.totalPoints ?? 0) + (stats.studyTotalMinutes ?? 0);
+      const level  = Math.floor(pts / 100) + 1;
       const job    = (localStorage.getItem(JOB_KEY) ?? "warrior") as JobClass;
       // クラフトアイテムを登録してから装備取得
       const { CRAFT_RECIPES } = await import("@/lib/materials");

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import GameCanvas, { type JobClass } from "@/components/GameCanvas";
 import JobClassSelector from "@/components/JobClassSelector";
 import { checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold } from "@/lib/gold";
-import { getEquippedWeapon, getEquippedArmor } from "@/lib/equipment";
+import { getEquippedWeapon, getEquippedArmor, getEquipmentEffect } from "@/lib/equipment";
+import { calcPlayerStats } from "@/lib/battle";
 
 type Stats = {
   totalTasks: number;
@@ -113,6 +114,16 @@ export default function GamePage() {
   const level = calcLevel(pts);
   const exp   = calcExp(pts);
 
+  const weapon = getEquippedWeapon();
+  const armor  = getEquippedArmor();
+  const craftEffect = getEquipmentEffect(weapon, armor);
+  const playerStats = calcPlayerStats(
+    level, jobClass,
+    weapon?.attackBonus ?? 0, weapon?.magicBonus ?? 0,
+    armor?.defenseBonus ?? 0, armor?.magicBonus ?? 0,
+    armor?.statusResist ?? 0, craftEffect,
+  );
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
       {/* タスク完了アニメ */}
@@ -167,6 +178,22 @@ export default function GamePage() {
             <div className="h-3 rounded-full bg-gray-800">
               <div className="h-3 rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${exp}%` }} />
             </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {[
+              { label: "HP",  value: playerStats.maxHp },
+              { label: "MP",  value: playerStats.maxMp },
+              { label: "攻撃", value: playerStats.attack },
+              { label: "防御", value: playerStats.defense },
+              { label: "魔力", value: playerStats.magic },
+              { label: "素早さ", value: playerStats.speed },
+            ].map((s) => (
+              <div key={s.label} className="rounded-lg border border-gray-800 bg-gray-950 py-2">
+                <div className="text-base font-bold text-white">{s.value}</div>
+                <div className="text-[10px] text-gray-400">{s.label}</div>
+              </div>
+            ))}
           </div>
 
           <button
