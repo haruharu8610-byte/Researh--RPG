@@ -161,7 +161,6 @@ function BattlePageInner() {
   const [actingMemberId, setActingMemberId] = useState<string | null>(null);
   const [memberSpells, setMemberSpells] = useState<Spell[]>([]);
   const activeSpells = actingMemberId ? memberSpells : spells;
-  const activeSkills = getAvailableSkills(actingMemberId ? getMemberLevel() : (player?.level ?? 1));
 
   // ── Refs (logic) ───────────────────────────────────────
   const playerRef          = useRef<PlayerStats | null>(null);
@@ -181,6 +180,9 @@ function BattlePageInner() {
   const pendingAction      = useRef<PendingAction | null>(null);
   const victoriesRef       = useRef(0);
   const usedUltimatesRef   = useRef<Set<string>>(new Set());
+
+  // playerRef宣言後に置くこと（getMemberLevelがplayerRef.currentを参照するため）
+  const activeSkills = getAvailableSkills(actingMemberId ? getMemberLevel() : (player?.level ?? 1));
 
   // ── Typewriter ─────────────────────────────────────────
   useEffect(() => {
