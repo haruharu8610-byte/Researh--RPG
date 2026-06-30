@@ -32,6 +32,14 @@ export const RARITY_BG: Record<Rarity, string> = {
   legendary: "bg-yellow-950/30",
 };
 
+/** 武器・防具のレアリティ演出クラス（エピック=雷、レジェンド=炎） */
+export function equipRarityFx(rarity: Rarity | undefined, category: string | undefined): string {
+  if (category !== "weapon" && category !== "armor") return "";
+  if (rarity === "legendary") return "fx-fire";
+  if (rarity === "epic") return "fx-lightning";
+  return "";
+}
+
 // ── 特殊効果 ────────────────────────────────────────────────
 export type SpecialEffectType =
   | "mp_cost_reduce"    // MP消費削減（value: %）

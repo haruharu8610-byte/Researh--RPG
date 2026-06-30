@@ -16,7 +16,7 @@ import {
 } from "@/lib/battle";
 import {
   getEquippedWeapon, getEquippedArmor, getInventory, removeInventory, addInventory,
-  getEquipmentEffect, registerCraftedItems, SHOP_ITEMS, type ShopItem,
+  getEquipmentEffect, registerCraftedItems, SHOP_ITEMS, findItemById, type ShopItem,
 } from "@/lib/equipment";
 import { addGold } from "@/lib/gold";
 import { getParty, type PartyMemberData } from "@/lib/party";
@@ -688,7 +688,13 @@ function BattlePageInner() {
       const partyData = getParty();
       const memberLevel = Math.max(1, level - 1);
       const members: PartyMemberBattle[] = partyData.map(m => {
-        const ms = calcPlayerStats(memberLevel, m.jobClass);
+        const mWeapon = findItemById(m.weaponId);
+        const mArmor  = findItemById(m.armorId);
+        const ms = calcPlayerStats(
+          memberLevel, m.jobClass,
+          mWeapon?.attackBonus ?? 0, mWeapon?.magicBonus ?? 0,
+          mArmor?.defenseBonus ?? 0, mArmor?.magicBonus ?? 0, mArmor?.statusResist ?? 0,
+        );
         return {
           id: m.id, name: m.name, jobClass: m.jobClass,
           hp: ms.maxHp, maxHp: ms.maxHp,

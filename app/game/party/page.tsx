@@ -73,6 +73,7 @@ export default function PartyPage() {
           <h1 className="text-lg font-bold text-green-300">👥 なかまを増やす</h1>
           <div className="flex items-center gap-3">
             <span className="text-yellow-400 font-bold">💰 {gold}G</span>
+            <button onClick={() => router.push("/game/equipment")} className="text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-700 rounded px-2 py-0.5">🎽 そうび</button>
             <button onClick={() => router.push("/game")} className="text-xs text-gray-500 hover:text-gray-300">もどる</button>
           </div>
         </div>

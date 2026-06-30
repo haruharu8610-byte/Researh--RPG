@@ -77,6 +77,37 @@ function allItems(): ShopItem[] {
   return [...SHOP_ITEMS, ..._craftedItems];
 }
 
+export function findItemById(id: string | null | undefined): ShopItem | null {
+  if (!id) return null;
+  return allItems().find(i => i.id === id) ?? null;
+}
+
+// ── 所持装備（コレクション） ─────────────────────────────────
+const OWNED_WEAPONS_KEY = "rpg_owned_weapons";
+const OWNED_ARMORS_KEY  = "rpg_owned_armors";
+
+function getOwnedIds(key: string): string[] {
+  if (typeof localStorage === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(key) ?? "[]"); } catch { return []; }
+}
+function addOwnedId(key: string, id: string): void {
+  const ids = getOwnedIds(key);
+  if (!ids.includes(id)) { ids.push(id); localStorage.setItem(key, JSON.stringify(ids)); }
+}
+export function addOwnedWeapon(id: string): void { addOwnedId(OWNED_WEAPONS_KEY, id); }
+export function addOwnedArmor(id: string): void  { addOwnedId(OWNED_ARMORS_KEY, id); }
+
+/** 所持している武器一覧（購入・ガチャ・クラフトしたもの全て） */
+export function getOwnedWeapons(): ShopItem[] {
+  const ids = getOwnedIds(OWNED_WEAPONS_KEY);
+  return allItems().filter(i => i.category === "weapon" && (ids.includes(i.id) || _craftedItems.some(c => c.id === i.id)));
+}
+/** 所持している防具一覧（購入・ガチャ・クラフトしたもの全て） */
+export function getOwnedArmors(): ShopItem[] {
+  const ids = getOwnedIds(OWNED_ARMORS_KEY);
+  return allItems().filter(i => i.category === "armor" && (ids.includes(i.id) || _craftedItems.some(c => c.id === i.id)));
+}
+
 // ── 装備効果の集計 ──────────────────────────────────────────
 export function getEquipmentEffect(weapon: ShopItem | null, armor: ShopItem | null): CraftEffect {
   let effect = { ...DEFAULT_CRAFT_EFFECT };

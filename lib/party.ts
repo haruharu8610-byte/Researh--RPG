@@ -4,6 +4,8 @@ export type PartyMemberData = {
   id: string;
   name: string;
   jobClass: JobClass;
+  weaponId?: string | null;
+  armorId?: string | null;
 };
 
 export type AvailableCompanion = PartyMemberData & {
@@ -41,5 +43,14 @@ export function addPartyMember(member: PartyMemberData): void {
 
 export function removePartyMember(id: string): void {
   const party = getParty().filter(m => m.id !== id);
+  localStorage.setItem(PARTY_KEY, JSON.stringify(party));
+}
+
+export function setPartyMemberWeapon(id: string, weaponId: string | null): void {
+  const party = getParty().map(m => m.id === id ? { ...m, weaponId } : m);
+  localStorage.setItem(PARTY_KEY, JSON.stringify(party));
+}
+export function setPartyMemberArmor(id: string, armorId: string | null): void {
+  const party = getParty().map(m => m.id === id ? { ...m, armorId } : m);
   localStorage.setItem(PARTY_KEY, JSON.stringify(party));
 }

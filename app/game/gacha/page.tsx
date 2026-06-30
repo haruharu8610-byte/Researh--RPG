@@ -4,11 +4,11 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { pullGacha, GACHA_COST, GACHA_KIND_LABEL, type GachaKind, type GachaResult } from "@/lib/gacha";
+import { pullGachaSession, GACHA_COST, GACHA_KIND_LABEL, type GachaKind, type GachaResult } from "@/lib/gacha";
 import { getGold, spendGold } from "@/lib/gold";
 import { addMaterial } from "@/lib/materials";
-import { addInventory, equip, getEquippedWeapon, getEquippedArmor, type ShopItem } from "@/lib/equipment";
-import { RARITY_LABEL, RARITY_COLOR, RARITY_BORDER, RARITY_BG } from "@/lib/rarity";
+import { addInventory, addOwnedWeapon, addOwnedArmor, type ShopItem } from "@/lib/equipment";
+import { RARITY_LABEL, RARITY_COLOR, RARITY_BORDER, RARITY_BG, equipRarityFx } from "@/lib/rarity";
 
 const KINDS: GachaKind[] = ["item", "weapon", "armor"];
 
@@ -19,6 +19,7 @@ export default function GachaPage() {
   const [phase, setPhase] = useState<"idle" | "spinning" | "result">("idle");
   const [revealed, setRevealed] = useState<GachaResult[]>([]);
   const [visibleCount, setVisibleCount] = useState(0);
+  const [spinGuaranteed, setSpinGuaranteed] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => { setGold(getGold()); }, []);
@@ -33,10 +34,8 @@ export default function GachaPage() {
       return `${r.ref.name}を${r.qty}個手に入れた！`;
     }
     const item = r.ref as ShopItem;
-    if (item.category === "weapon" || item.category === "armor") {
-      equip(item);
-      return `${item.name}をそうびした！`;
-    }
+    if (item.category === "weapon") { addOwnedWeapon(item.id); return `${item.name}を手に入れた！（そうび変更で装備できます）`; }
+    if (item.category === "armor")  { addOwnedArmor(item.id);  return `${item.name}を手に入れた！（そうび変更で装備できます）`; }
     addInventory(item.id, r.qty);
     return `${item.name}を${r.qty}個手に入れた！`;
   }
@@ -46,20 +45,22 @@ export default function GachaPage() {
     const cost = GACHA_COST[tab] * times;
     if (!spendGold(cost)) { showMsg("ゴールドがたりない！"); return; }
     setGold(getGold());
+
+    const session = pullGachaSession(tab, times);
+    setSpinGuaranteed(session.guaranteed);
     setPhase("spinning");
     setRevealed([]); setVisibleCount(0);
 
+    const spinDuration = session.guaranteed ? 2000 : 1100;
     setTimeout(() => {
-      const drawn = Array.from({ length: times }, () => pullGacha(tab));
-      const msgs = drawn.map(applyResult);
-      setRevealed(drawn);
+      const msgs = session.results.map(applyResult);
+      setRevealed(session.results);
       setPhase("result");
-      // 1枚ずつ順番に表示
-      drawn.forEach((_, i) => {
+      session.results.forEach((_, i) => {
         setTimeout(() => setVisibleCount(c => Math.max(c, i + 1)), i * 220);
       });
       showMsg(msgs[msgs.length - 1]);
-    }, 1100);
+    }, spinDuration);
   }
 
   const hasLegendary = revealed.some(r => r.ref.rarity === "legendary");
@@ -91,14 +92,17 @@ export default function GachaPage() {
         </div>
 
         <p className="text-xs text-gray-500">
-          {tab === "item" ? "素材・どうぐ" : tab === "weapon" ? "武器（引くと自動でそうび）" : "防具（引くと自動でそうび）"}
-          がランダムで手に入ります。1回{GACHA_COST[tab]}G。レア度が高いほど出にくい。
+          {tab === "item" ? "素材・どうぐ" : tab === "weapon" ? "武器（そうび変更画面で装備できます）" : "防具（そうび変更画面で装備できます）"}
+          がランダムで手に入ります。1回{GACHA_COST[tab]}G。低確率で確定演出が発生すると最高レアリティが1つ確定。10連はエピック以上1つ以上保証。
         </p>
 
         {tab !== "item" && (
-          <p className="text-xs text-gray-600">
-            現在のそうび：{tab === "weapon" ? getEquippedWeapon()?.name ?? "なし" : getEquippedArmor()?.name ?? "なし"}
-          </p>
+          <button
+            onClick={() => router.push("/game/equipment")}
+            className="text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-700 rounded-lg px-3 py-1.5"
+          >
+            🎽 そうび変更画面へ
+          </button>
         )}
 
         {message && (
@@ -109,7 +113,17 @@ export default function GachaPage() {
 
         {/* ガチャ演出 */}
         <div className="relative rounded-xl border-2 border-fuchsia-800 bg-gray-900 p-6 flex items-center justify-center min-h-[120px] overflow-hidden">
-          {phase === "spinning" && (
+          {phase === "spinning" && spinGuaranteed && (
+            <>
+              <div className="absolute inset-0 bg-yellow-400/30 animate-pulse" />
+              <div className="text-center">
+                <div className="text-5xl animate-gacha-shake">🌟</div>
+                <p className="mt-2 text-sm font-bold text-yellow-300 animate-pulse">✨ 確定演出 ✨</p>
+                <p className="text-[10px] text-yellow-200">最高レアリティ確定！</p>
+              </div>
+            </>
+          )}
+          {phase === "spinning" && !spinGuaranteed && (
             <>
               <div className="absolute inset-0 bg-fuchsia-500/30 animate-gacha-flash" />
               <div className="text-6xl animate-gacha-shake">🎰</div>
@@ -123,18 +137,23 @@ export default function GachaPage() {
                 <div className="absolute inset-0 bg-yellow-400/20 animate-gacha-flash" />
               )}
               <div className="flex flex-wrap gap-2 justify-center w-full">
-                {revealed.slice(0, visibleCount).map((r, i) => (
-                  <div
-                    key={i}
-                    className={`animate-gacha-card-in rounded-lg border-2 px-3 py-2 text-center w-[100px] ${RARITY_BORDER[r.ref.rarity!]} ${RARITY_BG[r.ref.rarity!]} ${
-                      r.ref.rarity === "legendary" ? "shadow-[0_0_14px_3px_rgba(250,204,21,0.6)]" : ""
-                    }`}
-                  >
-                    <div className={`text-[10px] font-bold ${RARITY_COLOR[r.ref.rarity!]}`}>{RARITY_LABEL[r.ref.rarity!]}</div>
-                    <div className="text-xs text-white mt-1 leading-tight">{r.ref.name}</div>
-                    <div className="text-[10px] text-gray-400 mt-1">×{r.qty}</div>
-                  </div>
-                ))}
+                {revealed.slice(0, visibleCount).map((r, i) => {
+                  const cat = r.kind === "item" ? (r.ref as ShopItem).category : undefined;
+                  const fx = equipRarityFx(r.ref.rarity, cat);
+                  return (
+                    <div
+                      key={i}
+                      className={`relative animate-gacha-card-in rounded-lg border-2 px-3 py-2 text-center w-[100px] ${RARITY_BORDER[r.ref.rarity!]} ${RARITY_BG[r.ref.rarity!]} ${fx}`}
+                    >
+                      {r.forced && (
+                        <span className="absolute -top-2 -left-2 text-[9px] font-bold bg-yellow-400 text-gray-900 rounded px-1">確定</span>
+                      )}
+                      <div className={`text-[10px] font-bold ${RARITY_COLOR[r.ref.rarity!]}`}>{RARITY_LABEL[r.ref.rarity!]}</div>
+                      <div className="text-xs text-white mt-1 leading-tight">{r.ref.name}</div>
+                      <div className="text-[10px] text-gray-400 mt-1">×{r.qty}</div>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

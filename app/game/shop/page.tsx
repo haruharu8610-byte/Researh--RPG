@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   SHOP_ITEMS, equip, addInventory, getEquippedWeapon, getEquippedArmor,
-  getInventoryItem, type ShopItem,
+  getInventoryItem, addOwnedWeapon, addOwnedArmor, type ShopItem,
 } from "@/lib/equipment";
 import { MATERIALS, getMaterialQty, addMaterial } from "@/lib/materials";
 import { getGold, spendGold } from "@/lib/gold";
@@ -42,8 +42,8 @@ export default function ShopPage() {
 
   function handleBuyShop(item: ShopItem) {
     if (!spendGold(item.cost)) { showMsg("ゴールドがたりない！"); return; }
-    if (item.category === "weapon") { equip(item); setEW(item); showMsg(`${item.name}をそうびした！`); }
-    else if (item.category === "armor") { equip(item); setEA(item); showMsg(`${item.name}をそうびした！`); }
+    if (item.category === "weapon") { addOwnedWeapon(item.id); equip(item); setEW(item); showMsg(`${item.name}をそうびした！`); }
+    else if (item.category === "armor") { addOwnedArmor(item.id); equip(item); setEA(item); showMsg(`${item.name}をそうびした！`); }
     else { addInventory(item.id, 1); showMsg(`${item.name}をかった！`); }
     setGold(getGold());
   }

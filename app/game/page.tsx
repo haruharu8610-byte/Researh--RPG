@@ -256,6 +256,12 @@ export default function GamePage() {
             🎰 ガチャ
           </button>
           <button
+            onClick={() => router.push("/game/equipment")}
+            className="rounded-xl border border-indigo-600 bg-indigo-950 py-3 text-sm font-bold text-indigo-300 hover:bg-indigo-900 transition-colors"
+          >
+            🎽 そうび変更
+          </button>
+          <button
             onClick={() => router.push("/game/ranking")}
             className="col-span-2 rounded-xl border border-pink-600 bg-pink-950 py-3 text-sm font-bold text-pink-300 hover:bg-pink-900 transition-colors"
           >
