@@ -1,7 +1,8 @@
 import { DEFAULT_CRAFT_EFFECT, mergeCraftEffect, type CraftEffect, type SpecialEffect } from "@/lib/rarity";
 import type { Rarity } from "@/lib/rarity";
+import type { StatusEffect } from "@/lib/battle";
 
-export type ItemCategory = "weapon" | "armor" | "potion" | "ether";
+export type ItemCategory = "weapon" | "armor" | "potion" | "ether" | "throwable";
 
 export type ShopItem = {
   id: string; name: string; category: ItemCategory; cost: number; description: string;
@@ -10,6 +11,9 @@ export type ShopItem = {
   statusResist?: number;
   rarity?: Rarity;
   specialEffect?: SpecialEffect;
+  /** 敵に投げて使うアイテム用：固定ダメージ・状態異常付与 */
+  damage?: number;
+  enemyStatus?: { status: StatusEffect; baseChance: number; turns: number };
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -51,6 +55,13 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "hi_ether",      name: "ハイエーテル",     category: "ether",  cost: 120,  description: "MPを60回復",    mpRestore: 60,  rarity: "uncommon" },
   { id: "turbo_ether",   name: "ターボエーテル",   category: "ether",  cost: 300,  description: "MPを150回復",   mpRestore: 150, rarity: "rare"     },
   { id: "dry_ether",     name: "ドライエーテル",   category: "ether",  cost: 600,  description: "MPを全回復",    mpRestore: 9999, rarity: "epic"    },
+
+  // ── 敵に使うどうぐ ───────────────────────────────────────────
+  { id: "bomb",          name: "ばくだん",         category: "throwable", cost: 60,  description: "敵単体に固定ダメージ", damage: 50, rarity: "common" },
+  { id: "mega_bomb",     name: "メガばくだん",     category: "throwable", cost: 250, description: "敵単体に大ダメージ",   damage: 180, rarity: "rare" },
+  { id: "poison_powder", name: "どくのこな",       category: "throwable", cost: 80,  description: "敵単体を毒状態にする", enemyStatus: { status: "poison", baseChance: 0.8, turns: 4 }, rarity: "uncommon" },
+  { id: "paralyze_powder", name: "しびれごな",     category: "throwable", cost: 100, description: "敵単体をしびれ状態にする", enemyStatus: { status: "paralysis", baseChance: 0.7, turns: 3 }, rarity: "uncommon" },
+  { id: "sleep_powder",  name: "ねむりごな",       category: "throwable", cost: 90,  description: "敵単体を眠り状態にする", enemyStatus: { status: "sleep", baseChance: 0.75, turns: 3 }, rarity: "uncommon" },
 ];
 
 // クラフトアイテムは materials.ts で定義されるが、装備用ルックアップのためここで登録
