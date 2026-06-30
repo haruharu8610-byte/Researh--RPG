@@ -60,7 +60,7 @@ export default function GamePage() {
     }
     consumeGoldDungeonUse();
     setGoldDungeonUses(getGoldDungeonUsesLeft());
-    router.push("/game/battle?mode=gold");
+    window.location.href = "/game/battle?mode=gold";
   }
 
   function handleJobChange(j: JobClass) {
@@ -241,7 +241,7 @@ export default function GamePage() {
         {/* アクションボタン */}
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => router.push("/game/battle")}
+            onClick={() => { window.location.href = "/game/battle"; }}
             className="rounded-xl border border-yellow-600 bg-yellow-950 py-3 text-sm font-bold text-yellow-300 hover:bg-yellow-900 transition-colors"
           >
             ⚔️ バトルへ
@@ -265,7 +265,7 @@ export default function GamePage() {
             🔨 クラフト
           </button>
           <button
-            onClick={() => router.push("/game/battle?mode=material")}
+            onClick={() => { window.location.href = "/game/battle?mode=material"; }}
             className="rounded-xl border border-teal-600 bg-teal-950 py-3 text-sm font-bold text-teal-300 hover:bg-teal-900 transition-colors"
           >
             🪨 素材ダンジョン
