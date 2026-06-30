@@ -559,6 +559,14 @@ export function getFloorEnemyGroup(
   const normalEnemies = ENEMIES.filter(e => !e.isRare && !e.goldOnly);
   const rareEnemies   = ENEMIES.filter(e => e.isRare && (!e.goldOnly || opts?.goldDungeon));
 
+  // ゴールドダンジョンでは換金アイテムを落とす専用モンスターのみが出現する
+  if (opts?.goldDungeon) {
+    const goldOnlyEnemies = ENEMIES.filter(e => e.goldOnly);
+    const base = goldOnlyEnemies[Math.floor(Math.random() * goldOnlyEnemies.length)];
+    const hp = base.maxHp;
+    return [{ ...base, uid: `${base.id}-0`, hp, floorHp: hp, floorAtk: base.attack }];
+  }
+
   // 指定された敵を強制出現させる（素材ダンジョンの敵選択用。レアモンスターは対象外）
   if (opts?.forcedEnemyId) {
     const forced = normalEnemies.find(e => e.id === opts.forcedEnemyId);
