@@ -95,13 +95,17 @@ export function consumeGoldDungeonUse(): boolean {
 }
 
 const LAST_STUDY_MINUTES_KEY = "rpg_last_study_minutes";
+const STUDY_GOLD_PER_MINUTE = 10;
 
-/** 自習ボーナス。新たに増えた自習時間1分につき1G。 */
-export function checkStudyBonus(totalMinutes: number): number {
+export type StudyBonusResult = { gold: number; minutes: number };
+
+/** 自習ボーナス。新たに増えた自習時間1分につき10G（EXPは1分=1のまま）。 */
+export function checkStudyBonus(totalMinutes: number): StudyBonusResult {
   const last = parseInt(localStorage.getItem(LAST_STUDY_MINUTES_KEY) ?? "0", 10);
-  if (totalMinutes <= last) return 0;
+  if (totalMinutes <= last) return { gold: 0, minutes: 0 };
   const diff = totalMinutes - last;
   localStorage.setItem(LAST_STUDY_MINUTES_KEY, String(totalMinutes));
-  addGold(diff);
-  return diff;
+  const gold = diff * STUDY_GOLD_PER_MINUTE;
+  addGold(gold);
+  return { gold, minutes: diff };
 }

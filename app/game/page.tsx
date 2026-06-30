@@ -91,14 +91,14 @@ export default function GamePage() {
     // ログインボーナス・タスクボーナス
     const loginBonus = checkLoginBonus();
     const taskGold  = checkTaskBonus(data.completedTasks);
-    const studyGold = checkStudyBonus(data.studyTotalMinutes ?? 0);
+    const study = checkStudyBonus(data.studyTotalMinutes ?? 0);
     const msgs: string[] = [];
     if (loginBonus.total > 0) {
       msgs.push(`ログインボーナス +${loginBonus.total}G！（${getLoginStreak()}日連続）`);
       if (loginBonus.festivalBonus > 0) msgs.push(`🎉フェス限定ログインボーナス +${loginBonus.festivalBonus}G！`);
     }
     if (taskGold  > 0) msgs.push(`タスク完了ボーナス +${taskGold}G！`);
-    if (studyGold > 0) msgs.push(`自習ボーナス +${studyGold}G +${studyGold}EXP！📚`);
+    if (study.gold > 0) msgs.push(`自習ボーナス +${study.gold}G +${study.minutes}EXP！📚`);
     if (msgs.length) {
       setBonusMsg(msgs.join("　"));
       setTimeout(() => setBonusMsg(null), 4000);
