@@ -69,7 +69,7 @@ export function checkTaskBonus(completedCount: number): number {
 // ── ゴールドダンジョン：1日の挑戦回数制限 ──────────────────────
 const GOLD_DUNGEON_DATE_KEY  = "rpg_gold_dungeon_date";
 const GOLD_DUNGEON_USES_KEY  = "rpg_gold_dungeon_uses";
-export const GOLD_DUNGEON_DAILY_LIMIT = 3;
+export const GOLD_DUNGEON_DAILY_LIMIT = 5;
 
 function resetGoldDungeonIfNewDay(): void {
   const today = new Date().toDateString();
