@@ -398,12 +398,18 @@ function BattlePageInner() {
     const actor = order[idx];
     setCurrentActorId(actor.id);
 
-    if (actor.kind === "player") {
-      handlePlayerTurn();
-    } else if (actor.kind === "party") {
-      handlePartyTurn(actor.id);
-    } else {
-      handleEnemyTurn(actor.id);
+    try {
+      if (actor.kind === "player") {
+        handlePlayerTurn();
+      } else if (actor.kind === "party") {
+        handlePartyTurn(actor.id);
+      } else {
+        handleEnemyTurn(actor.id);
+      }
+    } catch (err) {
+      console.error("battle turn error", err);
+      pendingAction.current = null;
+      setPhase("select");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -819,33 +825,34 @@ function BattlePageInner() {
   }
 
   function getActiveCombatant() {
-    const p = playerRef.current!;
-    if (!actingMemberId) {
+    const p = playerRef.current;
+    const m = actingMemberId ? partyRef.current.find(x => x.id === actingMemberId) : null;
+    if (actingMemberId && m) {
       return {
-        id: "player" as const,
-        name: `あなた(${JOB[p.jobClass]})`,
-        jobClass: p.jobClass,
-        attack: p.attack, magic: p.magic, maxHp: p.maxHp, maxMp: p.maxMp,
-        craftEffect: p.craftEffect,
-        weaponElement: (getEquippedWeapon()?.element ?? "none") as Element,
-        getHp: () => playerHpRef.current,
-        getMp: () => playerMpRef.current,
-        setHp: (v: number) => { setPlayerHp(v); playerHpRef.current = v; },
-        setMp: (v: number) => { setPlayerMp(v); playerMpRef.current = v; },
+        id: m.id,
+        name: m.name,
+        jobClass: m.jobClass,
+        attack: m.attack, magic: m.magic, maxHp: m.maxHp, maxMp: m.maxMp,
+        craftEffect: DEFAULT_CRAFT_EFFECT,
+        weaponElement: (findItemById(m.weaponId)?.element ?? "none") as Element,
+        getHp: () => partyRef.current.find(x => x.id === m.id)?.hp ?? 0,
+        getMp: () => partyRef.current.find(x => x.id === m.id)?.mp ?? 0,
+        setHp: (v: number) => { partyRef.current = partyRef.current.map(x => x.id === m.id ? { ...x, hp: v } : x); syncPartyState(); },
+        setMp: (v: number) => { partyRef.current = partyRef.current.map(x => x.id === m.id ? { ...x, mp: v } : x); syncPartyState(); },
       };
     }
-    const m = partyRef.current.find(x => x.id === actingMemberId)!;
+    // プレイヤー本人（フォールバックも含む）
     return {
-      id: m.id,
-      name: m.name,
-      jobClass: m.jobClass,
-      attack: m.attack, magic: m.magic, maxHp: m.maxHp, maxMp: m.maxMp,
-      craftEffect: DEFAULT_CRAFT_EFFECT,
-      weaponElement: (findItemById(m.weaponId)?.element ?? "none") as Element,
-      getHp: () => partyRef.current.find(x => x.id === m.id)?.hp ?? 0,
-      getMp: () => partyRef.current.find(x => x.id === m.id)?.mp ?? 0,
-      setHp: (v: number) => { partyRef.current = partyRef.current.map(x => x.id === m.id ? { ...x, hp: v } : x); syncPartyState(); },
-      setMp: (v: number) => { partyRef.current = partyRef.current.map(x => x.id === m.id ? { ...x, mp: v } : x); syncPartyState(); },
+      id: "player" as const,
+      name: `あなた(${p ? JOB[p.jobClass] : ""})`,
+      jobClass: p?.jobClass ?? "warrior",
+      attack: p?.attack ?? 0, magic: p?.magic ?? 0, maxHp: p?.maxHp ?? 0, maxMp: p?.maxMp ?? 0,
+      craftEffect: p?.craftEffect ?? DEFAULT_CRAFT_EFFECT,
+      weaponElement: (getEquippedWeapon()?.element ?? "none") as Element,
+      getHp: () => playerHpRef.current,
+      getMp: () => playerMpRef.current,
+      setHp: (v: number) => { setPlayerHp(v); playerHpRef.current = v; },
+      setMp: (v: number) => { setPlayerMp(v); playerMpRef.current = v; },
     };
   }
 
@@ -904,10 +911,21 @@ function BattlePageInner() {
   }
 
   function executeAction(currentEnemies: ActiveEnemy[]) {
+    try {
+      executeActionInner(currentEnemies);
+    } catch (err) {
+      console.error("executeAction error", err);
+      pendingAction.current = null;
+      setPhase("select");
+    }
+  }
+
+  function executeActionInner(currentEnemies: ActiveEnemy[]) {
     if (!player || !pendingAction.current) return;
     const action = pendingAction.current;
     const alive = currentEnemies.filter(e => e.hp > 0);
-    const aliveTarget = alive[Math.min(targetIdx, alive.length - 1)];
+    if (!alive.length) { pendingAction.current = null; setPhase("select"); return; }
+    const aliveTarget = alive[Math.min(Math.max(0, targetIdx), alive.length - 1)];
     let updated = [...currentEnemies];
     const msgs: string[] = [];
     const combatant = getActiveCombatant();
