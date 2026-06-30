@@ -1,6 +1,6 @@
 import { DEFAULT_CRAFT_EFFECT, mergeCraftEffect, type CraftEffect, type SpecialEffect } from "@/lib/rarity";
 import type { Rarity } from "@/lib/rarity";
-import type { StatusEffect } from "@/lib/battle";
+import type { StatusEffect, Element } from "@/lib/battle";
 
 export type ItemCategory = "weapon" | "armor" | "potion" | "ether" | "throwable";
 
@@ -16,6 +16,8 @@ export type ShopItem = {
   enemyStatus?: { status: StatusEffect; baseChance: number; turns: number };
   /** フェス限定：通常ショップには並ばず、フェス期間のガチャでのみ排出 */
   festivalOnly?: boolean;
+  /** 武器の属性。一致する属性の「わざ」を使うとダメージが上がる */
+  element?: Element;
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -23,24 +25,24 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "wooden_sword",  name: "木の剣",           category: "weapon", cost: 100,  description: "粗末な木製の剣",           attackBonus: 5,  rarity: "common"   },
   { id: "bronze_knife",  name: "どうのナイフ",     category: "weapon", cost: 180,  description: "青銅製の素早い短剣",       attackBonus: 8,  rarity: "common"   },
   { id: "iron_sword",    name: "鉄の剣",           category: "weapon", cost: 300,  description: "しっかりした鉄の剣",       attackBonus: 12, rarity: "common"   },
-  { id: "battle_axe",   name: "バトルアックス",    category: "weapon", cost: 500,  description: "重くて強力な戦斧",         attackBonus: 18, rarity: "uncommon" },
+  { id: "battle_axe",   name: "バトルアックス",    category: "weapon", cost: 500,  description: "重くて強力な戦斧",         attackBonus: 18, rarity: "uncommon", element: "earth" },
   { id: "steel_sword",   name: "鋼の剣",           category: "weapon", cost: 700,  description: "切れ味鋭い鋼の剣",         attackBonus: 22, rarity: "uncommon" },
   { id: "magic_staff",   name: "まほうの杖",       category: "weapon", cost: 500,  description: "魔力を高める杖",           attackBonus: 5,  magicBonus: 18, rarity: "uncommon" },
-  { id: "wind_spear",    name: "かぜのやり",       category: "weapon", cost: 850,  description: "風を切る速さの槍",         attackBonus: 20, magicBonus: 8, rarity: "uncommon" },
+  { id: "wind_spear",    name: "かぜのやり",       category: "weapon", cost: 850,  description: "風を切る速さの槍",         attackBonus: 20, magicBonus: 8, rarity: "uncommon", element: "wind" },
   { id: "holy_staff",    name: "せいなる杖",       category: "weapon", cost: 1200, description: "神聖な力を宿す杖",         attackBonus: 8,  magicBonus: 35, rarity: "rare"    },
-  { id: "thunder_blade", name: "らいじんのつるぎ", category: "weapon", cost: 1500, description: "雷を纏う剣",               attackBonus: 32, magicBonus: 12, rarity: "rare"    },
+  { id: "thunder_blade", name: "らいじんのつるぎ", category: "weapon", cost: 1500, description: "雷を纏う剣",               attackBonus: 32, magicBonus: 12, rarity: "rare", element: "wind" },
   { id: "dark_blade",    name: "やみのつるぎ",     category: "weapon", cost: 1800, description: "闇の力を持つ呪いの剣",     attackBonus: 38, magicBonus: 10, rarity: "rare"    },
-  { id: "dragon_sword",  name: "ドラゴンのつるぎ", category: "weapon", cost: 2000, description: "竜の力を宿す最強の剣",     attackBonus: 45, rarity: "epic"    },
+  { id: "dragon_sword",  name: "ドラゴンのつるぎ", category: "weapon", cost: 2000, description: "竜の力を宿す最強の剣",     attackBonus: 45, rarity: "epic", element: "fire" },
   { id: "sage_staff",    name: "けんじゃのつえ",   category: "weapon", cost: 3000, description: "賢者が使う最高の魔法の杖", attackBonus: 15, magicBonus: 55, rarity: "epic"    },
-  { id: "war_hammer",    name: "ウォーハンマー",   category: "weapon", cost: 1100, description: "両手で振るう巨大な槌",     attackBonus: 28, rarity: "rare"    },
-  { id: "twin_dagger",   name: "ツインダガー",     category: "weapon", cost: 950,  description: "二刀流の短剣。手数で攻める", attackBonus: 26, magicBonus: 4, rarity: "rare"    },
-  { id: "storm_bow",     name: "あらしの弓",       category: "weapon", cost: 1300, description: "風を呼ぶ強弓",             attackBonus: 30, magicBonus: 6, rarity: "rare"    },
+  { id: "war_hammer",    name: "ウォーハンマー",   category: "weapon", cost: 1100, description: "両手で振るう巨大な槌",     attackBonus: 28, rarity: "rare", element: "earth" },
+  { id: "twin_dagger",   name: "ツインダガー",     category: "weapon", cost: 950,  description: "二刀流の短剣。手数で攻める", attackBonus: 26, magicBonus: 4, rarity: "rare", element: "wind" },
+  { id: "storm_bow",     name: "あらしの弓",       category: "weapon", cost: 1300, description: "風を呼ぶ強弓",             attackBonus: 30, magicBonus: 6, rarity: "rare", element: "wind" },
   { id: "void_scythe",   name: "ボイドサイズ",     category: "weapon", cost: 2400, description: "虚無を纏う大鎌",           attackBonus: 50, magicBonus: 15, rarity: "epic"    },
   { id: "excalibur",     name: "エクスカリバー",   category: "weapon", cost: 12000, description: "選ばれし者のみが扱える聖剣", attackBonus: 100, magicBonus: 25, rarity: "legendary",
     specialEffect: { type: "spell_power_up", value: 25, label: "魔法威力+25%" } },
-  { id: "god_blade",     name: "しんのつるぎ",     category: "weapon", cost: 15000, description: "神話の中だけに存在したという剣", attackBonus: 120, rarity: "legendary",
+  { id: "god_blade",     name: "しんのつるぎ",     category: "weapon", cost: 15000, description: "神話の中だけに存在したという剣", attackBonus: 120, rarity: "legendary", element: "fire",
     specialEffect: { type: "fire_on_hit", value: 25, label: "物理攻撃に炎ダメージ+25" } },
-  { id: "phoenix_staff", name: "フェニックスの杖", category: "weapon", cost: 13000, description: "不死鳥の炎を宿す杖",       attackBonus: 20, magicBonus: 100, rarity: "legendary",
+  { id: "phoenix_staff", name: "フェニックスの杖", category: "weapon", cost: 13000, description: "不死鳥の炎を宿す杖",       attackBonus: 20, magicBonus: 100, rarity: "legendary", element: "fire",
     specialEffect: { type: "mp_cost_reduce", value: 30, label: "MP消費-30%" } },
   { id: "fes_blade",     name: "🎉フェスブレード",  category: "weapon", cost: 99999, description: "フェス限定の特別な剣。圧倒的な力を秘める", attackBonus: 130, magicBonus: 30, rarity: "legendary", festivalOnly: true,
     specialEffect: { type: "spell_power_up", value: 40, label: "魔法威力+40%" } },

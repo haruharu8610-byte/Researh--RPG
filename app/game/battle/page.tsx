@@ -10,8 +10,9 @@ import {
   getFloor, advanceFloor, getFloorEnemyGroup,
   calcPlayerStats, calcPhysicalDamage, calcMagicDamage, calcEnemySpellDamage,
   calcPoisonDamage, getAvailableSpells, tryHit, getEffectiveness, tryCritical, CRIT_MULTIPLIER,
+  getAvailableSkills, calcSkillDamage,
   ELEMENT_LABEL, SPELLS, STATUS_LABEL, tryApplyStatus,
-  type ActiveEnemy, type PlayerStats, type JobClass, type Spell,
+  type ActiveEnemy, type PlayerStats, type JobClass, type Spell, type Skill, type Element,
   type ActiveStatus,
 } from "@/lib/battle";
 import {
@@ -34,9 +35,9 @@ function getCraftedIds(): string[] {
 const JOB_KEY     = "rpg_job_class";
 const VICTORY_KEY = "rpg_victories";
 
-type Phase = "intro" | "select" | "ally_targeting" | "spells" | "items" | "targeting" | "message" | "victory" | "defeat" | "ran";
-type PendingAction = { type: "attack" } | { type: "spell"; spell: Spell } | { type: "item"; item: ShopItem };
-type SelectCmd = "attack" | "magic" | "item" | "run";
+type Phase = "intro" | "select" | "ally_targeting" | "spells" | "skills" | "items" | "targeting" | "message" | "victory" | "defeat" | "ran";
+type PendingAction = { type: "attack" } | { type: "spell"; spell: Spell } | { type: "skill"; skill: Skill } | { type: "item"; item: ShopItem };
+type SelectCmd = "attack" | "skill" | "magic" | "item" | "run";
 
 export type PartyMemberBattle = {
   id: string; name: string; jobClass: JobClass;
@@ -45,6 +46,7 @@ export type PartyMemberBattle = {
   attack: number; defense: number; magic: number;
   speed: number; statusResist: number;
   status: ActiveStatus | null;
+  weaponId?: string | null;
 };
 
 type TurnActor =
@@ -151,6 +153,7 @@ function BattlePageInner() {
   const [victories, setVictories]       = useState(0);
   const [spells, setSpells]             = useState<Spell[]>([]);
   const [spellIdx, setSpellIdx]         = useState(0);
+  const [skillIdx, setSkillIdx]         = useState(0);
   const [floor, setFloor]               = useState(1);
   const [isBossFloor, setIsBossFloor]   = useState(false);
   const [isRareFloor, setIsRareFloor]   = useState(false);
@@ -158,6 +161,7 @@ function BattlePageInner() {
   const [actingMemberId, setActingMemberId] = useState<string | null>(null);
   const [memberSpells, setMemberSpells] = useState<Spell[]>([]);
   const activeSpells = actingMemberId ? memberSpells : spells;
+  const activeSkills = getAvailableSkills(actingMemberId ? getMemberLevel() : (player?.level ?? 1));
 
   // ── Refs (logic) ───────────────────────────────────────
   const playerRef          = useRef<PlayerStats | null>(null);
@@ -675,6 +679,7 @@ function BattlePageInner() {
           attack: ms.attack, defense: ms.defense, magic: ms.magic,
           speed: ms.speed, statusResist: ms.statusResist,
           status: null,
+          weaponId: m.weaponId ?? null,
         };
       });
 
@@ -722,7 +727,7 @@ function BattlePageInner() {
       if (phase === "message") { if (["Enter"," ","z"].includes(key)) advance(); return; }
       if (["victory","defeat","ran"].includes(phase)) { if (["Enter"," "].includes(key)) router.push("/game"); return; }
       if (phase === "select") {
-        const CMDS: SelectCmd[] = actingMemberId ? ["attack","magic","item"] : ["attack","magic","item","run"];
+        const CMDS: SelectCmd[] = actingMemberId ? ["attack","skill","magic","item"] : ["attack","skill","magic","item","run"];
         const cur = CMDS.indexOf(selectCmd);
         const safeCur = cur === -1 ? 0 : cur;
         if (key === "ArrowUp" || key === "ArrowDown") setSelectCmd(CMDS[(safeCur + 2) % CMDS.length]);
@@ -737,6 +742,17 @@ function BattlePageInner() {
           pendingAction.current = { type: "spell", spell: sp };
           if (sp.target === "all" || sp.target === "all_allies") executeAction(enemies);
           else if (sp.target === "single_ally") { setAllyTargetBack("spells"); setAllyTargetIdx(0); setPhase("ally_targeting"); }
+          else setPhase("targeting");
+        }
+        if (key === "Escape" || key === "x") setPhase("select");
+      }
+      if (phase === "skills") {
+        if (key === "ArrowUp")   setSkillIdx(i => Math.max(0, i - 1));
+        if (key === "ArrowDown") setSkillIdx(i => Math.min(activeSkills.length - 1, i + 1));
+        if (["Enter","z"].includes(key)) {
+          const sk = activeSkills[skillIdx];
+          pendingAction.current = { type: "skill", skill: sk };
+          if (sk.target === "all") executeAction(enemies);
           else setPhase("targeting");
         }
         if (key === "Escape" || key === "x") setPhase("select");
@@ -756,7 +772,10 @@ function BattlePageInner() {
         if (key === "ArrowLeft")  setTargetIdx(i => (i - 1 + alive.length) % alive.length);
         if (key === "ArrowRight") setTargetIdx(i => (i + 1) % alive.length);
         if (["Enter","z"].includes(key)) executeAction(enemies);
-        if (key === "Escape" || key === "x") setPhase(pendingAction.current?.type === "item" ? "items" : "select");
+        if (key === "Escape" || key === "x") {
+          const t = pendingAction.current?.type;
+          setPhase(t === "item" ? "items" : t === "skill" ? "skills" : "select");
+        }
       }
       if (phase === "ally_targeting") {
         const allyList = getAllyList();
@@ -793,6 +812,7 @@ function BattlePageInner() {
         jobClass: p.jobClass,
         attack: p.attack, magic: p.magic, maxHp: p.maxHp, maxMp: p.maxMp,
         craftEffect: p.craftEffect,
+        weaponElement: (getEquippedWeapon()?.element ?? "none") as Element,
         getHp: () => playerHpRef.current,
         getMp: () => playerMpRef.current,
         setHp: (v: number) => { setPlayerHp(v); playerHpRef.current = v; },
@@ -806,6 +826,7 @@ function BattlePageInner() {
       jobClass: m.jobClass,
       attack: m.attack, magic: m.magic, maxHp: m.maxHp, maxMp: m.maxMp,
       craftEffect: DEFAULT_CRAFT_EFFECT,
+      weaponElement: (findItemById(m.weaponId)?.element ?? "none") as Element,
       getHp: () => partyRef.current.find(x => x.id === m.id)?.hp ?? 0,
       getMp: () => partyRef.current.find(x => x.id === m.id)?.mp ?? 0,
       setHp: (v: number) => { partyRef.current = partyRef.current.map(x => x.id === m.id ? { ...x, hp: v } : x); syncPartyState(); },
@@ -839,6 +860,10 @@ function BattlePageInner() {
       pendingAction.current = { type: "attack" };
       if (enemies.filter(e => e.hp > 0).length > 1) setPhase("targeting");
       else executeAction(enemies);
+    }
+    if (cmd === "skill") {
+      if (!activeSkills.length) { pushMessages(["つかえるわざがない！"], "select"); return; }
+      setSkillIdx(0); setPhase("skills");
     }
     if (cmd === "magic") {
       if (!activeSpells.length) { pushMessages(["つかえるまほうがない！"], "select"); return; }
@@ -933,6 +958,42 @@ function BattlePageInner() {
           msgs.push(`${allyTarget.name}のMPが${healed}回復した！`);
         }
       }
+      pushCb(msgs, advanceActor);
+      return;
+    }
+
+    if (action.type === "skill") {
+      const skill = action.skill;
+      const actualMpCost = Math.max(1, Math.ceil(skill.mpCost * combatant.craftEffect.mpCostMultiplier));
+      if (combatant.getMp() < actualMpCost) { pushMessages(["MPがたりない！"], "select"); return; }
+      combatant.setMp(combatant.getMp() - actualMpCost);
+
+      const confused = actingMemberId
+        ? partyRef.current.find(m => m.id === actingMemberId)?.status?.type === "confuse"
+        : playerStatusRef.current?.type === "confuse";
+      if (!tryHit(confused)) {
+        msgs.push(confused ? "😵 混乱してわざがミス！" : `${skill.name}！　ミス！`);
+        pushCb(msgs, advanceActor); return;
+      }
+
+      const targets = skill.target === "all" ? alive : [aliveTarget];
+      msgs.push(`${skill.name}！`);
+      const atkValue = effectiveAttack(combatant.id, combatant.attack);
+      const matched = skill.element !== "none" && skill.element === combatant.weaponElement;
+      for (const t of targets) {
+        const crit = tryCritical();
+        let dmg = calcSkillDamage(atkValue, t.defense, skill, combatant.weaponElement, t.physResist);
+        if (crit) dmg = Math.round(dmg * CRIT_MULTIPLIER);
+        flashEnemy(t.uid);
+        updated = updated.map(e => e.uid === t.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
+        const eSt = enemyStatusesRef.current.get(t.uid);
+        if (eSt?.type === "sleep") { setEnemyStatus(t.uid, null); msgs.push(`${t.name}は目を覚ました！`); }
+        if (crit) msgs.push("💥会心の一撃！");
+        msgs.push(`${t.name}に${dmg}ダメージ！${matched ? "　武器属性が一致して大ダメージ！" : ""}`);
+        if (t.physResist < 0.5) msgs.push("物理攻撃はあまり効かないようだ…");
+      }
+      setEnemies(updated); enemiesRef.current = updated;
+      if (checkVictory(updated)) return;
       pushCb(msgs, advanceActor);
       return;
     }
@@ -1187,11 +1248,15 @@ function BattlePageInner() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setPhase(pendingAction.current?.type === "item" ? "items" : "spells");
+                const t = pendingAction.current?.type;
+                setPhase(t === "item" ? "items" : t === "skill" ? "skills" : "spells");
               }}
               className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors mt-1"
             >
-              {pendingAction.current?.type === "item" ? "← どうぐ選択にもどる" : "← まほう選択にもどる"}
+              {(() => {
+                const t = pendingAction.current?.type;
+                return t === "item" ? "← どうぐ選択にもどる" : t === "skill" ? "← わざ選択にもどる" : "← まほう選択にもどる";
+              })()}
             </button>
           )}
           {phase === "ally_targeting" && (
@@ -1203,6 +1268,7 @@ function BattlePageInner() {
             </button>
           )}
           {phase === "spells"         && <p className="text-yellow-200 font-medium">まほうを選んでください</p>}
+          {phase === "skills"         && <p className="text-yellow-200 font-medium">わざを選んでください</p>}
           {phase === "items"          && <p className="text-yellow-200 font-medium">どうぐを選んでください</p>}
         </div>
 
@@ -1210,8 +1276,8 @@ function BattlePageInner() {
         {phase === "select" && (
           <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
             <div className="grid grid-cols-2 gap-2">
-              {(actingMemberId ? (["attack","magic","item"] as const) : (["attack","magic","item","run"] as const)).map((cmd) => {
-                const labels = { attack:"たたかう", magic:"まほう", item:`どうぐ(${itemCount})`, run:"にげる" };
+              {(actingMemberId ? (["attack","skill","magic","item"] as const) : (["attack","skill","magic","item","run"] as const)).map((cmd) => {
+                const labels = { attack:"たたかう", skill:"わざ", magic:"まほう", item:`どうぐ(${itemCount})`, run:"にげる" };
                 return (
                   <button
                     key={cmd}
@@ -1285,6 +1351,56 @@ function BattlePageInner() {
                       MP{sp.mpCost}
                       {sp.target === "all" || sp.target === "all_allies" ? "全体" :
                        sp.target === "single_ally" ? "味方単" : "単体"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* わざ選択 */}
+        {phase === "skills" && (
+          <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-200 font-bold">わざ選択</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setPhase("select"); }}
+                className="text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700 transition-colors"
+              >
+                ← もどる
+              </button>
+            </div>
+            <div className="mb-2 rounded bg-gray-900 border border-gray-700 px-2 py-1.5 text-[10px] text-gray-400 leading-relaxed">
+              そうびしている武器の属性と一致した技は<span className="text-orange-300 font-bold">ダメージ増加</span>！
+              現在の武器属性：<span className="text-orange-300 font-bold">{ELEMENT_LABEL[getActiveCombatant().weaponElement]}</span>
+            </div>
+            <div className="space-y-1 max-h-44 overflow-y-auto">
+              {activeSkills.map((sk, i) => {
+                const matched = sk.element !== "none" && sk.element === getActiveCombatant().weaponElement;
+                return (
+                  <button
+                    key={sk.id}
+                    onClick={(ev) => {
+                      ev.stopPropagation(); setSkillIdx(i);
+                      pendingAction.current = { type: "skill", skill: sk };
+                      if (sk.target === "all") executeAction(enemies);
+                      else setPhase("targeting");
+                    }}
+                    onMouseEnter={() => setSkillIdx(i)}
+                    className={`w-full flex justify-between rounded px-3 py-2 text-sm ${
+                      skillIdx === i ? "bg-yellow-400 text-gray-900 font-bold" : "bg-gray-700 text-white"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1">
+                      {skillIdx === i ? "▶ " : ""}
+                      {sk.name}{" "}
+                      {ELEMENT_LABEL[sk.element]}
+                      {matched && <span className="text-orange-400 font-bold ml-1">⚔️一致！</span>}
+                    </span>
+                    <span className="text-xs opacity-80">
+                      MP{sk.mpCost}
+                      {sk.target === "all" ? "全体" : "単体"}
                     </span>
                   </button>
                 );
