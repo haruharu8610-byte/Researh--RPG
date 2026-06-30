@@ -17,7 +17,7 @@ import {
 } from "@/lib/battle";
 import {
   getEquippedWeapon, getEquippedArmor, getInventory, removeInventory, addInventory,
-  getEquipmentEffect, registerCraftedItems, SHOP_ITEMS, findItemById, type ShopItem,
+  getEquipmentEffect, registerCraftedItems, SHOP_ITEMS, findItemById, getSeriesSetBonus, type ShopItem,
 } from "@/lib/equipment";
 import { addGold } from "@/lib/gold";
 import { getParty, type PartyMemberData } from "@/lib/party";
@@ -36,8 +36,8 @@ const JOB_KEY     = "rpg_job_class";
 const VICTORY_KEY = "rpg_victories";
 
 type Phase = "intro" | "select" | "ally_targeting" | "spells" | "skills" | "items" | "targeting" | "message" | "victory" | "defeat" | "ran";
-type PendingAction = { type: "attack" } | { type: "spell"; spell: Spell } | { type: "skill"; skill: Skill } | { type: "item"; item: ShopItem };
-type SelectCmd = "attack" | "skill" | "magic" | "item" | "run";
+type PendingAction = { type: "attack" } | { type: "spell"; spell: Spell } | { type: "skill"; skill: Skill } | { type: "item"; item: ShopItem } | { type: "ultimate" };
+type SelectCmd = "attack" | "skill" | "magic" | "item" | "run" | "ultimate";
 
 export type PartyMemberBattle = {
   id: string; name: string; jobClass: JobClass;
@@ -180,6 +180,7 @@ function BattlePageInner() {
   const pendingCallback    = useRef<(() => void) | null>(null);
   const pendingAction      = useRef<PendingAction | null>(null);
   const victoriesRef       = useRef(0);
+  const usedUltimatesRef   = useRef<Set<string>>(new Set());
 
   // ── Typewriter ─────────────────────────────────────────
   useEffect(() => {
@@ -655,9 +656,10 @@ function BattlePageInner() {
       const weapon = getEquippedWeapon();
       const armor  = getEquippedArmor();
       const craftEffect = getEquipmentEffect(weapon, armor);
+      const setBonus = getSeriesSetBonus(weapon, armor);
       const p = calcPlayerStats(level, job,
-        weapon?.attackBonus ?? 0, weapon?.magicBonus ?? 0,
-        armor?.defenseBonus ?? 0, armor?.magicBonus ?? 0,
+        (weapon?.attackBonus ?? 0) + (setBonus?.attack ?? 0), (weapon?.magicBonus ?? 0) + (setBonus?.magic ?? 0),
+        (armor?.defenseBonus ?? 0) + (setBonus?.defense ?? 0), armor?.magicBonus ?? 0,
         armor?.statusResist ?? 0, craftEffect,
       );
 
@@ -667,10 +669,11 @@ function BattlePageInner() {
       const members: PartyMemberBattle[] = partyData.map(m => {
         const mWeapon = findItemById(m.weaponId);
         const mArmor  = findItemById(m.armorId);
+        const mSetBonus = getSeriesSetBonus(mWeapon, mArmor);
         const ms = calcPlayerStats(
           memberLevel, m.jobClass,
-          mWeapon?.attackBonus ?? 0, mWeapon?.magicBonus ?? 0,
-          mArmor?.defenseBonus ?? 0, mArmor?.magicBonus ?? 0, mArmor?.statusResist ?? 0,
+          (mWeapon?.attackBonus ?? 0) + (mSetBonus?.attack ?? 0), (mWeapon?.magicBonus ?? 0) + (mSetBonus?.magic ?? 0),
+          (mArmor?.defenseBonus ?? 0) + (mSetBonus?.defense ?? 0), mArmor?.magicBonus ?? 0, mArmor?.statusResist ?? 0,
         );
         return {
           id: m.id, name: m.name, jobClass: m.jobClass,
@@ -695,6 +698,7 @@ function BattlePageInner() {
       partyRef.current = members; setPartyMembers(members);
       setEnemies(grp); enemiesRef.current = grp;
       victoriesRef.current = vic; setVictories(vic);
+      usedUltimatesRef.current = new Set();
       setSpells(availableSpells);
       setFloor(currentFloor);
       setIsBossFloor(boss);
@@ -727,7 +731,8 @@ function BattlePageInner() {
       if (phase === "message") { if (["Enter"," ","z"].includes(key)) advance(); return; }
       if (["victory","defeat","ran"].includes(phase)) { if (["Enter"," "].includes(key)) router.push("/game"); return; }
       if (phase === "select") {
-        const CMDS: SelectCmd[] = actingMemberId ? ["attack","skill","magic","item"] : ["attack","skill","magic","item","run"];
+        const baseCmds: SelectCmd[] = actingMemberId ? ["attack","skill","magic","item"] : ["attack","skill","magic","item","run"];
+        const CMDS: SelectCmd[] = canUseUltimate() ? [...baseCmds, "ultimate"] : baseCmds;
         const cur = CMDS.indexOf(selectCmd);
         const safeCur = cur === -1 ? 0 : cur;
         if (key === "ArrowUp" || key === "ArrowDown") setSelectCmd(CMDS[(safeCur + 2) % CMDS.length]);
@@ -803,6 +808,16 @@ function BattlePageInner() {
   }
 
   /** 現在の行動者（プレイヤー or 指定された仲間）を共通インターフェースで返す */
+  function getActiveWeapon(): ShopItem | null {
+    if (!actingMemberId) return getEquippedWeapon();
+    return findItemById(partyRef.current.find(x => x.id === actingMemberId)?.weaponId);
+  }
+
+  function canUseUltimate(): boolean {
+    const w = getActiveWeapon();
+    return !!w?.ultimate && !usedUltimatesRef.current.has(getActiveCombatant().id);
+  }
+
   function getActiveCombatant() {
     const p = playerRef.current!;
     if (!actingMemberId) {
@@ -864,6 +879,13 @@ function BattlePageInner() {
     if (cmd === "skill") {
       if (!activeSkills.length) { pushMessages(["つかえるわざがない！"], "select"); return; }
       setSkillIdx(0); setPhase("skills");
+    }
+    if (cmd === "ultimate") {
+      if (!canUseUltimate()) return;
+      const ult = getActiveWeapon()!.ultimate!;
+      pendingAction.current = { type: "ultimate" };
+      if (ult.kind === "nuke_single") setPhase("targeting");
+      else executeAction(enemies);
     }
     if (cmd === "magic") {
       if (!activeSpells.length) { pushMessages(["つかえるまほうがない！"], "select"); return; }
@@ -958,6 +980,70 @@ function BattlePageInner() {
           msgs.push(`${allyTarget.name}のMPが${healed}回復した！`);
         }
       }
+      pushCb(msgs, advanceActor);
+      return;
+    }
+
+    if (action.type === "ultimate") {
+      const weapon = getActiveWeapon();
+      const ult = weapon?.ultimate;
+      if (!ult || usedUltimatesRef.current.has(combatant.id)) { setPhase("select"); return; }
+      usedUltimatesRef.current.add(combatant.id);
+      msgs.push(`✨ ${combatant.name}の${ult.name}！`);
+
+      const applyBuff = (buffRef: typeof speedBuffsRef, setBuffedIds: typeof setSpeedBuffedIds, factor: number, label: string) => {
+        const newBuffs = new Map(buffRef.current);
+        const allyIds = [{ id: "player" }, ...partyRef.current.filter(m => m.hp > 0).map(m => ({ id: m.id }))];
+        for (const a of allyIds) newBuffs.set(a.id, { turnsLeft: 3, factor });
+        buffRef.current = newBuffs;
+        setBuffedIds(new Set(newBuffs.keys()));
+        msgs.push(`味方全員の${label}が上がった！`);
+      };
+
+      if (ult.kind === "nuke_single") {
+        const power = ult.power ?? 4;
+        const dmg = Math.max(1, Math.round((combatant.attack * power) - aliveTarget.defense * 0.5));
+        flashEnemy(aliveTarget.uid);
+        updated = updated.map(e => e.uid === aliveTarget.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
+        msgs.push(`${aliveTarget.name}に${dmg}の超巨大ダメージ！`);
+        if (ult.buffType === "def_up") applyBuff(defBuffsRef, setDefBuffedIds, ult.buffFactor ?? 1.6, "守備力");
+        if (ult.buffType === "atk_up") applyBuff(atkBuffsRef, setAtkBuffedIds, ult.buffFactor ?? 1.5, "攻撃力");
+        if (ult.buffType === "speed_up") applyBuff(speedBuffsRef, setSpeedBuffedIds, ult.buffFactor ?? 1.6, "素早さ");
+      } else if (ult.kind === "nuke_all") {
+        const power = ult.power ?? 2.5;
+        for (const t of alive) {
+          const dmg = Math.max(1, Math.round((combatant.attack * power) - t.defense * 0.5));
+          flashEnemy(t.uid);
+          updated = updated.map(e => e.uid === t.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
+          msgs.push(`${t.name}に${dmg}の超巨大ダメージ！`);
+        }
+        if (ult.buffType === "def_up") applyBuff(defBuffsRef, setDefBuffedIds, ult.buffFactor ?? 1.6, "守備力");
+        if (ult.buffType === "atk_up") applyBuff(atkBuffsRef, setAtkBuffedIds, ult.buffFactor ?? 1.5, "攻撃力");
+        if (ult.buffType === "speed_up") applyBuff(speedBuffsRef, setSpeedBuffedIds, ult.buffFactor ?? 1.6, "素早さ");
+      } else if (ult.kind === "revive_heal") {
+        if (playerHpRef.current > 0) { setPlayerHp(player.maxHp); playerHpRef.current = player.maxHp; }
+        let revived = playerHpRef.current <= 0;
+        if (revived) { setPlayerHp(Math.floor(player.maxHp * 0.5)); playerHpRef.current = Math.floor(player.maxHp * 0.5); }
+        const updParty = partyRef.current.map(m => {
+          if (m.hp > 0) return { ...m, hp: m.maxHp };
+          if (!revived) { revived = true; return { ...m, hp: Math.floor(m.maxHp * 0.5) }; }
+          return m;
+        });
+        partyRef.current = updParty; syncPartyState();
+        msgs.push("味方全員のHPが全回復した！");
+        if (revived) msgs.push("倒れていた仲間がよみがえった！");
+      } else if (ult.kind === "support_buff") {
+        const healAmt = ult.power ?? 60;
+        if (playerHpRef.current > 0) { const nh = Math.min(player.maxHp, playerHpRef.current + healAmt); setPlayerHp(nh); playerHpRef.current = nh; }
+        const updParty = partyRef.current.map(m => m.hp > 0 ? { ...m, hp: Math.min(m.maxHp, m.hp + healAmt) } : m);
+        partyRef.current = updParty; syncPartyState();
+        msgs.push(`味方全員のHPが${healAmt}回復した！`);
+        applyBuff(defBuffsRef, setDefBuffedIds, ult.buffFactor ?? 1.6, "守備力");
+        applyBuff(speedBuffsRef, setSpeedBuffedIds, 1.5, "素早さ");
+      }
+
+      setEnemies(updated); enemiesRef.current = updated;
+      if (checkVictory(updated)) return;
       pushCb(msgs, advanceActor);
       return;
     }
@@ -1244,7 +1330,7 @@ function BattlePageInner() {
           )}
           {phase === "targeting"      && <p className="text-yellow-200 font-medium">← → でターゲット選択　Enterで決定</p>}
           {phase === "ally_targeting" && <p className="text-yellow-200 font-medium">← → で味方選択　Enterで決定</p>}
-          {phase === "targeting" && (
+          {phase === "targeting" && !["attack", "ultimate"].includes(pendingAction.current?.type ?? "") && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1276,15 +1362,23 @@ function BattlePageInner() {
         {phase === "select" && (
           <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
             <div className="grid grid-cols-2 gap-2">
-              {(actingMemberId ? (["attack","skill","magic","item"] as const) : (["attack","skill","magic","item","run"] as const)).map((cmd) => {
-                const labels = { attack:"たたかう", skill:"わざ", magic:"まほう", item:`どうぐ(${itemCount})`, run:"にげる" };
+              {[
+                ...(actingMemberId ? (["attack","skill","magic","item"] as const) : (["attack","skill","magic","item","run"] as const)),
+                ...(canUseUltimate() ? (["ultimate"] as const) : []),
+              ].map((cmd) => {
+                const labels = { attack:"たたかう", skill:"わざ", magic:"まほう", item:`どうぐ(${itemCount})`, run:"にげる", ultimate:`✨ ${getActiveWeapon()?.ultimate?.name ?? "ひっさつ"}` };
+                const isUltimate = cmd === "ultimate";
                 return (
                   <button
                     key={cmd}
                     onClick={(e) => { e.stopPropagation(); setSelectCmd(cmd); executeSelect(cmd); }}
                     onMouseEnter={() => setSelectCmd(cmd)}
-                    className={`rounded-lg py-2.5 text-sm font-bold transition-all ${
-                      selectCmd === cmd ? "bg-yellow-400 text-gray-900" : "bg-gray-700 text-white hover:bg-gray-600"
+                    className={`rounded-lg py-2.5 text-sm font-bold transition-all ${isUltimate ? "col-span-2" : ""} ${
+                      selectCmd === cmd
+                        ? "bg-yellow-400 text-gray-900"
+                        : isUltimate
+                          ? "bg-gradient-to-r from-fuchsia-700 to-orange-600 text-white animate-pulse hover:opacity-90"
+                          : "bg-gray-700 text-white hover:bg-gray-600"
                     }`}
                   >
                     {selectCmd === cmd ? "▶ " : ""}{labels[cmd]}

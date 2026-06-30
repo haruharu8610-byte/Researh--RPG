@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getOwnedWeapons, getOwnedArmors, getEquippedWeapon, getEquippedArmor, equip,
-  registerCraftedItems, removeOwnedWeapon, removeOwnedArmor, sellPriceFor,
+  getOwnedWeapons, getOwnedArmors, getEquippedWeapon, getEquippedArmor, equip, findItemById,
+  registerCraftedItems, removeOwnedWeapon, removeOwnedArmor, sellPriceFor, getSeriesSetBonus,
   type ShopItem, type OwnedShopItem,
 } from "@/lib/equipment";
 import { CRAFT_RECIPES, type CraftRecipe } from "@/lib/materials";
@@ -77,6 +77,10 @@ export default function EquipmentPage() {
     ? (tab === "weapon" ? equippedWeaponId : equippedArmorId)
     : (tab === "weapon" ? currentMember?.weaponId ?? null : currentMember?.armorId ?? null);
 
+  const targetWeapon = targetId === "player" ? getEquippedWeapon() : findItemById(currentMember?.weaponId);
+  const targetArmor  = targetId === "player" ? getEquippedArmor()  : findItemById(currentMember?.armorId);
+  const setBonus = getSeriesSetBonus(targetWeapon, targetArmor);
+
   function handleEquip(item: ShopItem) {
     if (targetId === "player") {
       equip(item);
@@ -141,6 +145,13 @@ export default function EquipmentPage() {
           </div>
         </div>
 
+        {setBonus && (
+          <div className="rounded-lg border-2 border-yellow-500 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-300 font-bold text-center">
+            ✨ シリーズボーナス発動中！（{targetWeapon?.series}）
+            ATK+{setBonus.attack} DEF+{setBonus.defense} MAG+{setBonus.magic}
+          </div>
+        )}
+
         {/* 武器/防具タブ */}
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -186,6 +197,8 @@ export default function EquipmentPage() {
                       <span className="text-sm font-bold text-white">{item.name}</span>
                       {sellable && <span className="text-xs text-gray-400">×{item.qty}</span>}
                       {isEquipped && <span className="text-xs text-green-400 font-bold">✓ そうび中</span>}
+                      {item.series && <span className="text-xs text-yellow-400">📦{item.series}シリーズ</span>}
+                      {item.ultimate && <span className="text-xs text-fuchsia-400">⚔️必殺技あり</span>}
                     </div>
                     <div className="text-xs text-gray-400 mt-1">{item.description}</div>
                     <div className="text-xs text-gray-500 mt-1 space-x-3">

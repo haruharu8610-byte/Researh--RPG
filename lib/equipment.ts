@@ -4,6 +4,16 @@ import type { StatusEffect, Element } from "@/lib/battle";
 
 export type ItemCategory = "weapon" | "armor" | "potion" | "ether" | "throwable";
 
+/** レジェンド武器専用の必殺技。バトル中1回のみ使用可能 */
+export type UltimateSkill = {
+  name: string;
+  description: string;
+  kind: "nuke_single" | "nuke_all" | "revive_heal" | "support_buff";
+  power?: number;
+  buffType?: "atk_up" | "def_up" | "speed_up";
+  buffFactor?: number;
+};
+
 export type ShopItem = {
   id: string; name: string; category: ItemCategory; cost: number; description: string;
   attackBonus?: number; defenseBonus?: number; magicBonus?: number;
@@ -18,6 +28,10 @@ export type ShopItem = {
   festivalOnly?: boolean;
   /** 武器の属性。一致する属性の「わざ」を使うとダメージが上がる */
   element?: Element;
+  /** シリーズ名。武器と防具で同じシリーズを揃えるとセットボーナス */
+  series?: string;
+  /** レジェンド武器の専用必殺技（バトル中1回のみ） */
+  ultimate?: UltimateSkill;
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -32,20 +46,31 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "holy_staff",    name: "せいなる杖",       category: "weapon", cost: 1200, description: "神聖な力を宿す杖",         attackBonus: 8,  magicBonus: 35, rarity: "rare"    },
   { id: "thunder_blade", name: "らいじんのつるぎ", category: "weapon", cost: 1500, description: "雷を纏う剣",               attackBonus: 32, magicBonus: 12, rarity: "rare", element: "wind" },
   { id: "dark_blade",    name: "やみのつるぎ",     category: "weapon", cost: 1800, description: "闇の力を持つ呪いの剣",     attackBonus: 38, magicBonus: 10, rarity: "rare"    },
-  { id: "dragon_sword",  name: "ドラゴンのつるぎ", category: "weapon", cost: 2000, description: "竜の力を宿す最強の剣",     attackBonus: 45, rarity: "epic", element: "fire" },
-  { id: "sage_staff",    name: "けんじゃのつえ",   category: "weapon", cost: 3000, description: "賢者が使う最高の魔法の杖", attackBonus: 15, magicBonus: 55, rarity: "epic"    },
+  { id: "dragon_sword",  name: "ドラゴンのつるぎ", category: "weapon", cost: 2000, description: "竜の力を宿す最強の剣",     attackBonus: 45, rarity: "epic", element: "fire", series: "dragon" },
+  { id: "sage_staff",    name: "けんじゃのつえ",   category: "weapon", cost: 3000, description: "賢者が使う最高の魔法の杖", attackBonus: 15, magicBonus: 55, rarity: "epic", series: "sage"    },
   { id: "war_hammer",    name: "ウォーハンマー",   category: "weapon", cost: 1100, description: "両手で振るう巨大な槌",     attackBonus: 28, rarity: "rare", element: "earth" },
   { id: "twin_dagger",   name: "ツインダガー",     category: "weapon", cost: 950,  description: "二刀流の短剣。手数で攻める", attackBonus: 26, magicBonus: 4, rarity: "rare", element: "wind" },
   { id: "storm_bow",     name: "あらしの弓",       category: "weapon", cost: 1300, description: "風を呼ぶ強弓",             attackBonus: 30, magicBonus: 6, rarity: "rare", element: "wind" },
   { id: "void_scythe",   name: "ボイドサイズ",     category: "weapon", cost: 2400, description: "虚無を纏う大鎌",           attackBonus: 50, magicBonus: 15, rarity: "epic"    },
-  { id: "excalibur",     name: "エクスカリバー",   category: "weapon", cost: 12000, description: "選ばれし者のみが扱える聖剣", attackBonus: 100, magicBonus: 25, rarity: "legendary",
-    specialEffect: { type: "spell_power_up", value: 25, label: "魔法威力+25%" } },
-  { id: "god_blade",     name: "しんのつるぎ",     category: "weapon", cost: 15000, description: "神話の中だけに存在したという剣", attackBonus: 120, rarity: "legendary", element: "fire",
-    specialEffect: { type: "fire_on_hit", value: 25, label: "物理攻撃に炎ダメージ+25" } },
-  { id: "phoenix_staff", name: "フェニックスの杖", category: "weapon", cost: 13000, description: "不死鳥の炎を宿す杖",       attackBonus: 20, magicBonus: 100, rarity: "legendary", element: "fire",
-    specialEffect: { type: "mp_cost_reduce", value: 30, label: "MP消費-30%" } },
-  { id: "fes_blade",     name: "🎉フェスブレード",  category: "weapon", cost: 99999, description: "フェス限定の特別な剣。圧倒的な力を秘める", attackBonus: 130, magicBonus: 30, rarity: "legendary", festivalOnly: true,
-    specialEffect: { type: "spell_power_up", value: 40, label: "魔法威力+40%" } },
+  { id: "excalibur",     name: "エクスカリバー",   category: "weapon", cost: 12000, description: "選ばれし者のみが扱える聖剣", attackBonus: 100, magicBonus: 25, rarity: "legendary", series: "holy",
+    specialEffect: { type: "spell_power_up", value: 25, label: "魔法威力+25%" },
+    ultimate: { name: "聖剣の裁き", description: "単体に超巨大ダメージを与え、味方全員のスクルト効果を付与する", kind: "nuke_single", power: 4.5, buffType: "def_up", buffFactor: 1.6 } },
+  { id: "god_blade",     name: "しんのつるぎ",     category: "weapon", cost: 15000, description: "神話の中だけに存在したという剣", attackBonus: 120, rarity: "legendary", element: "fire", series: "god",
+    specialEffect: { type: "fire_on_hit", value: 25, label: "物理攻撃に炎ダメージ+25" },
+    ultimate: { name: "神々の裁き", description: "敵全体に超巨大な炎のダメージを与える", kind: "nuke_all", power: 2.8 } },
+  { id: "phoenix_staff", name: "フェニックスの杖", category: "weapon", cost: 13000, description: "不死鳥の炎を宿す杖",       attackBonus: 20, magicBonus: 100, rarity: "legendary", element: "fire", series: "phoenix",
+    specialEffect: { type: "mp_cost_reduce", value: 30, label: "MP消費-30%" },
+    ultimate: { name: "不死鳥の奇跡", description: "味方全員のHPを全回復し、倒れた仲間を1人よみがえらせる", kind: "revive_heal" } },
+  { id: "fes_blade",     name: "🎉フェスブレード",  category: "weapon", cost: 99999, description: "フェス限定の特別な剣。圧倒的な力を秘める", attackBonus: 130, magicBonus: 30, rarity: "legendary", festivalOnly: true, series: "fes",
+    specialEffect: { type: "spell_power_up", value: 40, label: "魔法威力+40%" },
+    ultimate: { name: "フェスティバルスペシャル", description: "敵全体に超巨大ダメージを与え、味方全員のバイキルト効果を付与する", kind: "nuke_all", power: 2.2, buffType: "atk_up", buffFactor: 1.5 } },
+  { id: "aegis_blade",   name: "アイギスのつるぎ", category: "weapon", cost: 14500, description: "絶対防御の加護を宿す聖なる剣", attackBonus: 95, rarity: "legendary", series: "aegis",
+    specialEffect: { type: "damage_reflect", value: 15, label: "ダメージ15%反射" },
+    ultimate: { name: "アイギスの絶対防御", description: "味方全員のHPを回復し、スクルトと素早さアップを付与する", kind: "support_buff", power: 80, buffType: "def_up", buffFactor: 1.8 } },
+  { id: "frost_blade",   name: "フロストブレード", category: "weapon", cost: 1700, description: "氷の力を宿す刀剣",         attackBonus: 34, magicBonus: 10, rarity: "rare", element: "water", series: "frost" },
+  { id: "storm_lance",   name: "ストームランス",   category: "weapon", cost: 2300, description: "嵐を呼ぶ大槍",             attackBonus: 48, magicBonus: 12, rarity: "epic", element: "wind", series: "storm" },
+  { id: "inferno_axe",   name: "インフェルノアックス", category: "weapon", cost: 2350, description: "業火を纏う巨大な斧",   attackBonus: 52, rarity: "epic", element: "fire", series: "inferno" },
+  { id: "blessed_mace",  name: "ブレスメイス",     category: "weapon", cost: 1400, description: "祝福を受けたメイス",       attackBonus: 25, magicBonus: 20, rarity: "rare"    },
 
   // ── 防具 ───────────────────────────────────────────────────
   { id: "cloth_robe",    name: "ぬののローブ",     category: "armor",  cost: 80,   description: "簡素な布のローブ",                 defenseBonus: 3,  statusResist: 0.05, rarity: "common"   },
@@ -57,17 +82,25 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "iron_armor",    name: "てつのよろい",     category: "armor",  cost: 900,  description: "重い鉄の鎧 耐性+25%",              defenseBonus: 22, statusResist: 0.25, rarity: "uncommon" },
   { id: "mystic_robe",   name: "みすてりーローブ", category: "armor",  cost: 1300, description: "謎めいたローブ。魔法耐性が上がる", defenseBonus: 15, magicBonus: 18, statusResist: 0.25, rarity: "rare"    },
   { id: "silver_armor",  name: "シルバーアーマー", category: "armor",  cost: 1600, description: "銀の光る鎧 耐性+30%",              defenseBonus: 32, statusResist: 0.30, rarity: "rare"    },
-  { id: "dragon_armor",  name: "ドラゴンのよろい", category: "armor",  cost: 2500, description: "最強の鎧 耐性+35%",                defenseBonus: 45, statusResist: 0.35, rarity: "epic"    },
-  { id: "sage_robe",     name: "けんじゃのローブ", category: "armor",  cost: 3500, description: "賢者の鎧。魔法と防御を兼ね備える", defenseBonus: 30, magicBonus: 30, statusResist: 0.35, rarity: "epic"    },
+  { id: "dragon_armor",  name: "ドラゴンのよろい", category: "armor",  cost: 2500, description: "最強の鎧 耐性+35%",                defenseBonus: 45, statusResist: 0.35, rarity: "epic", series: "dragon" },
+  { id: "sage_robe",     name: "けんじゃのローブ", category: "armor",  cost: 3500, description: "賢者の鎧。魔法と防御を兼ね備える", defenseBonus: 30, magicBonus: 30, statusResist: 0.35, rarity: "epic", series: "sage"    },
   { id: "knight_plate",  name: "ナイトプレート",   category: "armor",  cost: 1100, description: "騎士団の正装。安定した防御力",     defenseBonus: 24, statusResist: 0.22, rarity: "rare"    },
   { id: "shadow_cloak",  name: "シャドウクローク", category: "armor",  cost: 1250, description: "気配を消す漆黒のマント",           defenseBonus: 18, magicBonus: 12, statusResist: 0.25, rarity: "rare"    },
   { id: "guardian_shell",name: "ガーディアンシェル",category: "armor",  cost: 2200, description: "あらゆる衝撃を吸収する甲殻",       defenseBonus: 50, statusResist: 0.30, rarity: "epic"    },
-  { id: "aegis_armor",   name: "アイギスのよろい", category: "armor",  cost: 14000, description: "女神の加護を受けた絶対防御の鎧",   defenseBonus: 90, statusResist: 0.50, rarity: "legendary",
+  { id: "aegis_armor",   name: "アイギスのよろい", category: "armor",  cost: 14000, description: "女神の加護を受けた絶対防御の鎧",   defenseBonus: 90, statusResist: 0.50, rarity: "legendary", series: "aegis",
     specialEffect: { type: "damage_reflect", value: 20, label: "ダメージ20%反射" } },
-  { id: "holy_robe",     name: "せいなるローブ",   category: "armor",  cost: 13500, description: "天界の織物で編まれた聖衣",         defenseBonus: 55, magicBonus: 50, statusResist: 0.45, rarity: "legendary",
+  { id: "holy_robe",     name: "せいなるローブ",   category: "armor",  cost: 13500, description: "天界の織物で編まれた聖衣",         defenseBonus: 55, magicBonus: 50, statusResist: 0.45, rarity: "legendary", series: "holy",
     specialEffect: { type: "status_resist_all", value: 60, label: "全状態異常耐性+60%" } },
-  { id: "fes_armor",     name: "🎉フェスアーマー",  category: "armor",  cost: 99999, description: "フェス限定の特別な鎧。圧倒的な守りを誇る", defenseBonus: 100, magicBonus: 40, statusResist: 0.55, rarity: "legendary", festivalOnly: true,
+  { id: "fes_armor",     name: "🎉フェスアーマー",  category: "armor",  cost: 99999, description: "フェス限定の特別な鎧。圧倒的な守りを誇る", defenseBonus: 100, magicBonus: 40, statusResist: 0.55, rarity: "legendary", festivalOnly: true, series: "fes",
     specialEffect: { type: "status_resist_all", value: 70, label: "全状態異常耐性+70%" } },
+  { id: "god_armor",     name: "しんのよろい",     category: "armor",  cost: 14500, description: "神話の鎧。すべてを焼き尽くす炎を纏う", defenseBonus: 75, magicBonus: 20, statusResist: 0.40, rarity: "legendary", series: "god",
+    specialEffect: { type: "fire_on_hit", value: 20, label: "物理攻撃に炎ダメージ+20" } },
+  { id: "phoenix_robe",  name: "フェニックスローブ", category: "armor", cost: 13500, description: "不死鳥の加護を受けたローブ",       defenseBonus: 50, magicBonus: 60, statusResist: 0.40, rarity: "legendary", series: "phoenix",
+    specialEffect: { type: "mp_cost_reduce", value: 25, label: "MP消費-25%" } },
+  { id: "frost_mail",    name: "フロストメイル",   category: "armor",  cost: 1600, description: "氷で編まれた軽鎧",                 defenseBonus: 26, magicBonus: 8, statusResist: 0.20, rarity: "rare", series: "frost"   },
+  { id: "storm_plate",   name: "ストームプレート", category: "armor",  cost: 2250, description: "嵐の加護を受けた鎧",               defenseBonus: 42, statusResist: 0.28, rarity: "epic", series: "storm"   },
+  { id: "inferno_guard", name: "インフェルノガード", category: "armor", cost: 2300, description: "業火を防ぐ重装鎧",                 defenseBonus: 48, statusResist: 0.25, rarity: "epic", series: "inferno" },
+  { id: "swift_vest",    name: "スウィフトベスト", category: "armor",  cost: 1350, description: "軽量で動きやすい胴衣",             defenseBonus: 16, statusResist: 0.18, rarity: "rare"    },
 
   // ── 消耗品（HP） ───────────────────────────────────────────
   { id: "potion",        name: "ポーション",       category: "potion", cost: 30,   description: "HPを40回復",    hpRestore: 40,  rarity: "common"   },
@@ -166,6 +199,24 @@ export function getEquipmentEffect(weapon: ShopItem | null, armor: ShopItem | nu
   effect = mergeCraftEffect(effect, weapon?.specialEffect);
   effect = mergeCraftEffect(effect, armor?.specialEffect);
   return effect;
+}
+
+// ── シリーズ統一ボーナス ────────────────────────────────────
+// 武器と防具が同じシリーズの時に発動。レアリティが高いほど強力。
+const SERIES_BONUS_BY_RARITY: Record<Rarity, { attack: number; defense: number; magic: number }> = {
+  common:    { attack: 0,  defense: 0,  magic: 0  },
+  uncommon:  { attack: 4,  defense: 4,  magic: 4  },
+  rare:      { attack: 10, defense: 10, magic: 10 },
+  epic:      { attack: 20, defense: 20, magic: 20 },
+  legendary: { attack: 35, defense: 35, magic: 35 },
+};
+
+export type SeriesBonus = { attack: number; defense: number; magic: number };
+
+export function getSeriesSetBonus(weapon: ShopItem | null, armor: ShopItem | null): SeriesBonus | null {
+  if (!weapon?.series || !armor?.series || weapon.series !== armor.series) return null;
+  const rarity = weapon.rarity ?? "common";
+  return SERIES_BONUS_BY_RARITY[rarity];
 }
 
 // ── localStorage ─────────────────────────────────────────────

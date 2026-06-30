@@ -9,7 +9,7 @@ import {
   checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold, getLoginStreak,
   getGoldDungeonUsesLeft, consumeGoldDungeonUse,
 } from "@/lib/gold";
-import { getEquippedWeapon, getEquippedArmor, getEquipmentEffect } from "@/lib/equipment";
+import { getEquippedWeapon, getEquippedArmor, getEquipmentEffect, getSeriesSetBonus } from "@/lib/equipment";
 import { calcPlayerStats, getFloor } from "@/lib/battle";
 import { syncPlayerState } from "@/lib/playerState";
 
@@ -150,10 +150,11 @@ export default function GamePage() {
   const weapon = getEquippedWeapon();
   const armor  = getEquippedArmor();
   const craftEffect = getEquipmentEffect(weapon, armor);
+  const setBonus = getSeriesSetBonus(weapon, armor);
   const playerStats = calcPlayerStats(
     level, jobClass,
-    weapon?.attackBonus ?? 0, weapon?.magicBonus ?? 0,
-    armor?.defenseBonus ?? 0, armor?.magicBonus ?? 0,
+    (weapon?.attackBonus ?? 0) + (setBonus?.attack ?? 0), (weapon?.magicBonus ?? 0) + (setBonus?.magic ?? 0),
+    (armor?.defenseBonus ?? 0) + (setBonus?.defense ?? 0), armor?.magicBonus ?? 0,
     armor?.statusResist ?? 0, craftEffect,
   );
 
