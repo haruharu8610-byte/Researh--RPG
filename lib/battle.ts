@@ -41,7 +41,7 @@ export type SpellEffectDef = {
 };
 
 export type SpellAllyEffect = {
-  type: "speed_up";
+  type: "speed_up" | "atk_up" | "def_up";
   factor: number; // e.g. 1.5 = +50%
   turns: number;
 };
@@ -102,6 +102,14 @@ export const SPELLS: Spell[] = [
   // ⚡ 素早さ強化ライン
   { id: "piorimu",   name: "ピオリム",   element: "none",  power: 0,   mpCost: 7,  minLevel: 4,  target: "all_allies",  lineId: "speed",
     allyEffect: { type: "speed_up", factor: 1.6, turns: 3 } },
+
+  // 💪 攻撃力強化ライン
+  { id: "bikiruto",  name: "バイキルト", element: "none",  power: 0,   mpCost: 8,  minLevel: 6,  target: "all_allies",  lineId: "atk_buff",
+    allyEffect: { type: "atk_up", factor: 1.5, turns: 3 } },
+
+  // 🛡️ 守備力強化ライン
+  { id: "sukuruto",  name: "スクルト",   element: "none",  power: 0,   mpCost: 7,  minLevel: 5,  target: "all_allies",  lineId: "def_buff",
+    allyEffect: { type: "def_up", factor: 1.6, turns: 3 } },
 ];
 
 /** 各ラインの最高ティアのみ返す */

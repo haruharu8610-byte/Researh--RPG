@@ -21,7 +21,7 @@ import {
 import { addGold } from "@/lib/gold";
 import { getParty, type PartyMemberData } from "@/lib/party";
 import { MATERIALS, addMaterial } from "@/lib/materials";
-import { RARITY_COLOR, RARITY_LABEL } from "@/lib/rarity";
+import { RARITY_COLOR, RARITY_LABEL, DEFAULT_CRAFT_EFFECT } from "@/lib/rarity";
 import { syncPlayerState } from "@/lib/playerState";
 
 const CRAFTED_KEY = "rpg_crafted_list";
@@ -131,6 +131,8 @@ function BattlePageInner() {
   const [enemies, setEnemies]           = useState<ActiveEnemy[]>([]);
   const [enemyStatuses, setEnemyStatuses] = useState<Map<string, ActiveStatus>>(new Map());
   const [speedBuffedIds, setSpeedBuffedIds] = useState<Set<string>>(new Set());
+  const [atkBuffedIds, setAtkBuffedIds] = useState<Set<string>>(new Set());
+  const [defBuffedIds, setDefBuffedIds] = useState<Set<string>>(new Set());
   const [turnOrder, setTurnOrder]       = useState<TurnActor[]>([]);
   const [currentActorId, setCurrentActorId] = useState<string>("player");
   const [targetIdx, setTargetIdx]       = useState(0);
@@ -150,6 +152,10 @@ function BattlePageInner() {
   const [floor, setFloor]               = useState(1);
   const [isBossFloor, setIsBossFloor]   = useState(false);
   const [isRareFloor, setIsRareFloor]   = useState(false);
+  // null = プレイヤー自身のターン、それ以外は該当する仲間のターン
+  const [actingMemberId, setActingMemberId] = useState<string | null>(null);
+  const [memberSpells, setMemberSpells] = useState<Spell[]>([]);
+  const activeSpells = actingMemberId ? memberSpells : spells;
 
   // ── Refs (logic) ───────────────────────────────────────
   const playerRef          = useRef<PlayerStats | null>(null);
@@ -160,6 +166,8 @@ function BattlePageInner() {
   const enemiesRef         = useRef<ActiveEnemy[]>([]);
   const enemyStatusesRef   = useRef<Map<string, ActiveStatus>>(new Map());
   const speedBuffsRef      = useRef<Map<string, SpeedBuff>>(new Map());
+  const atkBuffsRef        = useRef<Map<string, SpeedBuff>>(new Map());
+  const defBuffsRef        = useRef<Map<string, SpeedBuff>>(new Map());
   const turnOrderRef       = useRef<TurnActor[]>([]);
   const actorIdxRef        = useRef(0);
   const pendingPhase       = useRef<Phase | null>(null);
@@ -216,6 +224,14 @@ function BattlePageInner() {
   // ── Speed helpers ──────────────────────────────────────
   function effectiveSpeed(id: string, base: number): number {
     const buff = speedBuffsRef.current.get(id);
+    return buff ? Math.round(base * buff.factor) : base;
+  }
+  function effectiveAttack(id: string, base: number): number {
+    const buff = atkBuffsRef.current.get(id);
+    return buff ? Math.round(base * buff.factor) : base;
+  }
+  function effectiveDefense(id: string, base: number): number {
+    const buff = defBuffsRef.current.get(id);
     return buff ? Math.round(base * buff.factor) : base;
   }
 
@@ -341,15 +357,25 @@ function BattlePageInner() {
     const idx   = actorIdxRef.current;
     if (idx >= order.length) {
       // Round complete → new round
-      // Decrement speed buffs
-      const newBuffs = new Map(speedBuffsRef.current);
-      for (const [id, buff] of newBuffs) {
-        const t = buff.turnsLeft - 1;
-        if (t <= 0) newBuffs.delete(id);
-        else newBuffs.set(id, { ...buff, turnsLeft: t });
+      // Decrement speed/attack/defense buffs
+      function decrementBuffs(ref: typeof speedBuffsRef): Map<string, SpeedBuff> {
+        const next = new Map(ref.current);
+        for (const [id, buff] of next) {
+          const t = buff.turnsLeft - 1;
+          if (t <= 0) next.delete(id);
+          else next.set(id, { ...buff, turnsLeft: t });
+        }
+        return next;
       }
+      const newBuffs = decrementBuffs(speedBuffsRef);
       speedBuffsRef.current = newBuffs;
       setSpeedBuffedIds(new Set(newBuffs.keys()));
+      const newAtkBuffs = decrementBuffs(atkBuffsRef);
+      atkBuffsRef.current = newAtkBuffs;
+      setAtkBuffedIds(new Set(newAtkBuffs.keys()));
+      const newDefBuffs = decrementBuffs(defBuffsRef);
+      defBuffsRef.current = newDefBuffs;
+      setDefBuffedIds(new Set(newDefBuffs.keys()));
 
       const newOrder = buildTurnOrder();
       turnOrderRef.current = newOrder;
@@ -383,6 +409,7 @@ function BattlePageInner() {
 
   // ── Player turn ────────────────────────────────────────
   function handlePlayerTurn() {
+    setActingMemberId(null);
     if (playerHpRef.current <= 0) { advanceActor(); return; }
     const p = playerRef.current!;
     const status = playerStatusRef.current;
@@ -410,8 +437,9 @@ function BattlePageInner() {
     }
   }
 
-  // ── Party member turn (AI) ─────────────────────────────
+  // ── Party member turn（プレイヤーが操作） ───────────────
   function handlePartyTurn(memberId: string) {
+    setActingMemberId(memberId);
     const member = partyRef.current.find(m => m.id === memberId);
     if (!member || member.hp <= 0) { advanceActor(); return; }
 
@@ -438,85 +466,14 @@ function BattlePageInner() {
     const aliveEnemies = enemiesRef.current.filter(e => e.hp > 0);
     if (!aliveEnemies.length) { advanceActor(); return; }
 
-    const msgs: string[] = [...statusMsgs];
-    const p = playerRef.current!;
-
-    // Cleric: heal most injured ally
-    if (member.jobClass === "cleric" && member.mp >= 4) {
-      const allies = [
-        { id: "player", name: "あなた", hp: playerHpRef.current, maxHp: p.maxHp },
-        ...partyRef.current.filter(m => m.id !== memberId && m.hp > 0).map(m => ({
-          id: m.id, name: m.name, hp: m.hp, maxHp: m.maxHp,
-        })),
-      ];
-      const injured = allies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-      if (injured && injured.hp / injured.maxHp < 0.5) {
-        const healAmt = 30 + Math.floor(member.magic * 0.3);
-        msgs.push(`${member.name}がケアルを唱えた！`);
-        if (injured.id === "player") {
-          const newHp = Math.min(p.maxHp, playerHpRef.current + healAmt);
-          setPlayerHp(newHp); playerHpRef.current = newHp;
-          msgs.push(`あなたのHPが${healAmt}回復した！`);
-        } else {
-          const updatedParty = partyRef.current.map(m => {
-            if (m.id === injured.id) {
-              const newHp = Math.min(m.maxHp, m.hp + healAmt);
-              return { ...m, hp: newHp };
-            }
-            return m;
-          });
-          partyRef.current = updatedParty; syncPartyState();
-          msgs.push(`${injured.name}のHPが${healAmt}回復した！`);
-        }
-        const updM = partyRef.current.map(m => m.id === memberId ? { ...m, mp: m.mp - 4 } : m);
-        partyRef.current = updM; syncPartyState();
-        pushCb(msgs, advanceActor);
-        return;
-      }
+    // コマンド選択を仲間用に開く（プレイヤーと同じUIを使い回す）
+    setMemberSpells(getAvailableSpells(getMemberLevel(), member.jobClass));
+    setSelectCmd("attack");
+    if (statusMsgs.length) {
+      pushCb(statusMsgs, () => setPhase("select"));
+    } else {
+      setPhase("select");
     }
-
-    // Mage: cast damage spell
-    if ((member.jobClass === "mage" || member.jobClass === "cleric") && member.mp > 0) {
-      const memberLevel = Math.max(1, (playerRef.current?.level ?? 1) - 1);
-      const available = getAvailableSpells(memberLevel, member.jobClass)
-        .filter(s => !s.effect && !s.allyEffect && s.target !== "single_ally" && s.target !== "all_allies" && s.power > 0 && s.mpCost <= member.mp);
-      if (available.length) {
-        const spell = available[available.length - 1];
-        const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
-        const dmg = calcMagicDamage(member.magic, spell, target.element, target.magicResist);
-        flashEnemy(target.uid);
-        const updEnemies = enemiesRef.current.map(e => e.uid === target.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
-        enemiesRef.current = updEnemies; setEnemies([...updEnemies]);
-        msgs.push(`${member.name}が${spell.name}を唱えた！ ${target.name}に${dmg}ダメージ！`);
-        const updM = partyRef.current.map(m => m.id === memberId ? { ...m, mp: m.mp - spell.mpCost } : m);
-        partyRef.current = updM; syncPartyState();
-        if (checkVictory(updEnemies)) return;
-        pushCb(msgs, advanceActor);
-        return;
-      }
-    }
-
-    // Default: attack
-    const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
-    const memberConfused = member.status?.type === "confuse";
-    if (!tryHit(memberConfused)) {
-      msgs.push(`${member.name}のこうげき！　ミス！`);
-      pushCb(msgs, advanceActor);
-      return;
-    }
-    const dmg = calcPhysicalDamage(member.attack, target.defense, target.physResist);
-    flashEnemy(target.uid);
-    const updEnemies = enemiesRef.current.map(e => e.uid === target.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
-    enemiesRef.current = updEnemies; setEnemies([...updEnemies]);
-    msgs.push(`${member.name}は${target.name}に${dmg}ダメージを与えた！`);
-    if (target.physResist < 0.5) msgs.push("物理攻撃はあまり効かないようだ…");
-
-    // Wake sleeping enemy on physical hit
-    const eSt = enemyStatusesRef.current.get(target.uid);
-    if (eSt?.type === "sleep") { setEnemyStatus(target.uid, null); msgs.push(`${target.name}は目を覚ました！`); }
-
-    if (checkVictory(updEnemies)) return;
-    pushCb(msgs, advanceActor);
   }
 
   // ── Enemy individual turn ──────────────────────────────
@@ -624,8 +581,9 @@ function BattlePageInner() {
         msgs.push(`${e.name}のこうげき！　ミス！`);
         pushCb(msgs, advanceActor); return;
       }
-      const defVal = target.isPlayer ? p.defense
+      const baseDefVal = target.isPlayer ? p.defense
         : (partyRef.current.find(m => m.id === target.id)?.defense ?? 0);
+      const defVal = effectiveDefense(target.id, baseDefVal);
       const dmg = calcPhysicalDamage(e.floorAtk, defVal);
       msgs.push(`${e.name}の${target.name}へのこうげき！　${dmg}のダメージ！`);
       // ダメージ反射（プレイヤーへの物理攻撃時）
@@ -761,17 +719,18 @@ function BattlePageInner() {
       if (phase === "message") { if (["Enter"," ","z"].includes(key)) advance(); return; }
       if (["victory","defeat","ran"].includes(phase)) { if (["Enter"," "].includes(key)) router.push("/game"); return; }
       if (phase === "select") {
-        const CMDS: SelectCmd[] = ["attack","magic","item","run"];
+        const CMDS: SelectCmd[] = actingMemberId ? ["attack","magic","item"] : ["attack","magic","item","run"];
         const cur = CMDS.indexOf(selectCmd);
-        if (key === "ArrowUp" || key === "ArrowDown") setSelectCmd(CMDS[(cur + 2) % 4]);
-        if (key === "ArrowLeft" || key === "ArrowRight") setSelectCmd(CMDS[cur % 2 === 0 ? cur + 1 : cur - 1]);
-        if (["Enter","z"].includes(key)) executeSelect(selectCmd);
+        const safeCur = cur === -1 ? 0 : cur;
+        if (key === "ArrowUp" || key === "ArrowDown") setSelectCmd(CMDS[(safeCur + 2) % CMDS.length]);
+        if (key === "ArrowLeft" || key === "ArrowRight") setSelectCmd(CMDS[safeCur % 2 === 0 ? Math.min(safeCur + 1, CMDS.length - 1) : safeCur - 1]);
+        if (["Enter","z"].includes(key)) executeSelect(CMDS.includes(selectCmd) ? selectCmd : "attack");
       }
       if (phase === "spells") {
         if (key === "ArrowUp")   setSpellIdx(i => Math.max(0, i - 1));
-        if (key === "ArrowDown") setSpellIdx(i => Math.min(spells.length - 1, i + 1));
+        if (key === "ArrowDown") setSpellIdx(i => Math.min(activeSpells.length - 1, i + 1));
         if (["Enter","z"].includes(key)) {
-          const sp = spells[spellIdx];
+          const sp = activeSpells[spellIdx];
           pendingAction.current = { type: "spell", spell: sp };
           if (sp.target === "all" || sp.target === "all_allies") executeAction(enemies);
           else if (sp.target === "single_ally") { setAllyTargetBack("spells"); setAllyTargetIdx(0); setPhase("ally_targeting"); }
@@ -817,6 +776,40 @@ function BattlePageInner() {
     return list;
   }
 
+  function getMemberLevel(): number {
+    return Math.max(1, (playerRef.current?.level ?? 1) - 1);
+  }
+
+  /** 現在の行動者（プレイヤー or 指定された仲間）を共通インターフェースで返す */
+  function getActiveCombatant() {
+    const p = playerRef.current!;
+    if (!actingMemberId) {
+      return {
+        id: "player" as const,
+        name: `あなた(${JOB[p.jobClass]})`,
+        jobClass: p.jobClass,
+        attack: p.attack, magic: p.magic, maxHp: p.maxHp, maxMp: p.maxMp,
+        craftEffect: p.craftEffect,
+        getHp: () => playerHpRef.current,
+        getMp: () => playerMpRef.current,
+        setHp: (v: number) => { setPlayerHp(v); playerHpRef.current = v; },
+        setMp: (v: number) => { setPlayerMp(v); playerMpRef.current = v; },
+      };
+    }
+    const m = partyRef.current.find(x => x.id === actingMemberId)!;
+    return {
+      id: m.id,
+      name: m.name,
+      jobClass: m.jobClass,
+      attack: m.attack, magic: m.magic, maxHp: m.maxHp, maxMp: m.maxMp,
+      craftEffect: DEFAULT_CRAFT_EFFECT,
+      getHp: () => partyRef.current.find(x => x.id === m.id)?.hp ?? 0,
+      getMp: () => partyRef.current.find(x => x.id === m.id)?.mp ?? 0,
+      setHp: (v: number) => { partyRef.current = partyRef.current.map(x => x.id === m.id ? { ...x, hp: v } : x); syncPartyState(); },
+      setMp: (v: number) => { partyRef.current = partyRef.current.map(x => x.id === m.id ? { ...x, mp: v } : x); syncPartyState(); },
+    };
+  }
+
   function getUsableItems() {
     const inv = getInventory();
     return inv
@@ -845,7 +838,7 @@ function BattlePageInner() {
       else executeAction(enemies);
     }
     if (cmd === "magic") {
-      if (!spells.length) { pushMessages(["つかえるまほうがない！"], "select"); return; }
+      if (!activeSpells.length) { pushMessages(["つかえるまほうがない！"], "select"); return; }
       setSpellIdx(0); setPhase("spells");
     }
     if (cmd === "item") {
@@ -853,6 +846,7 @@ function BattlePageInner() {
       setItemIdx(0); setPhase("items");
     }
     if (cmd === "run") {
+      if (actingMemberId) return; // 仲間のターンでは「にげる」は選べない
       if (isBossFloor) { pushMessages(["ボスからはにげられない！"], "select"); return; }
       if (Math.random() < 0.5) pushMessages(["うまくにげられた！"], "ran");
       else pushCb(["にげられなかった！"], advanceActor);
@@ -866,6 +860,7 @@ function BattlePageInner() {
     const aliveTarget = alive[Math.min(targetIdx, alive.length - 1)];
     let updated = [...currentEnemies];
     const msgs: string[] = [];
+    const combatant = getActiveCombatant();
 
     if (action.type === "item" && action.item.category === "throwable") {
       const item = action.item;
@@ -940,13 +935,16 @@ function BattlePageInner() {
     }
 
     if (action.type === "attack") {
-      const confused = playerStatusRef.current?.type === "confuse";
+      const confused = actingMemberId
+        ? partyRef.current.find(m => m.id === actingMemberId)?.status?.type === "confuse"
+        : playerStatusRef.current?.type === "confuse";
       if (!tryHit(confused)) {
         msgs.push(confused ? "😵 混乱してこうげきがミス！" : "こうげき！　ミス！");
         pushCb(msgs, advanceActor); return;
       }
       const crit = tryCritical();
-      const dmg = Math.round(calcPhysicalDamage(player.attack, aliveTarget.defense, aliveTarget.physResist) * (crit ? CRIT_MULTIPLIER : 1));
+      const atkValue = effectiveAttack(combatant.id, combatant.attack);
+      const dmg = Math.round(calcPhysicalDamage(atkValue, aliveTarget.defense, aliveTarget.physResist) * (crit ? CRIT_MULTIPLIER : 1));
       flashEnemy(aliveTarget.uid);
       if (crit) msgs.push("💥会心の一撃！");
       msgs.push(`${aliveTarget.name}に${dmg}のダメージ！`);
@@ -956,8 +954,8 @@ function BattlePageInner() {
       updated = updated.map(e => e.uid === aliveTarget.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
 
       // 炎付加ダメージ（クラフト効果）
-      if (player.craftEffect.fireOnHit > 0) {
-        const fireDmg = player.craftEffect.fireOnHit;
+      if (combatant.craftEffect.fireOnHit > 0) {
+        const fireDmg = combatant.craftEffect.fireOnHit;
         flashEnemy(aliveTarget.uid);
         updated = updated.map(e => e.uid === aliveTarget.uid ? { ...e, hp: Math.max(0, e.hp - fireDmg) } : e);
         msgs.push(`🔥 炎の付加ダメージ！ ${fireDmg}ダメージ！`);
@@ -966,25 +964,31 @@ function BattlePageInner() {
 
     if (action.type === "spell") {
       const spell = action.spell;
-      const actualMpCost = Math.max(1, Math.ceil(spell.mpCost * (player.craftEffect.mpCostMultiplier)));
-      if (playerMpRef.current < actualMpCost) { pushMessages(["MPがたりない！"], "select"); return; }
-      const newMp = playerMpRef.current - actualMpCost;
-      setPlayerMp(newMp); playerMpRef.current = newMp;
+      const actualMpCost = Math.max(1, Math.ceil(spell.mpCost * (combatant.craftEffect.mpCostMultiplier)));
+      if (combatant.getMp() < actualMpCost) { pushMessages(["MPがたりない！"], "select"); return; }
+      combatant.setMp(combatant.getMp() - actualMpCost);
 
-      // Ally-targeting spells
+      // Ally-targeting spells（素早さ/攻撃力/守備力アップ）
       if (spell.allyEffect) {
         msgs.push(`${spell.name}！`);
         const buffTargets = spell.target === "all_allies"
           ? [{ id: "player" }, ...partyRef.current.filter(m => m.hp > 0).map(m => ({ id: m.id }))]
           : [getAllyList()[Math.min(allyTargetIdx, getAllyList().length - 1)]];
-        const newBuffs = new Map(speedBuffsRef.current);
+        const buffRef = spell.allyEffect.type === "atk_up" ? atkBuffsRef
+          : spell.allyEffect.type === "def_up" ? defBuffsRef
+          : speedBuffsRef;
+        const setBuffedIds = spell.allyEffect.type === "atk_up" ? setAtkBuffedIds
+          : spell.allyEffect.type === "def_up" ? setDefBuffedIds
+          : setSpeedBuffedIds;
+        const statLabel = spell.allyEffect.type === "atk_up" ? "攻撃力" : spell.allyEffect.type === "def_up" ? "守備力" : "素早さ";
+        const newBuffs = new Map(buffRef.current);
         for (const bt of buffTargets) {
           newBuffs.set(bt.id, { turnsLeft: spell.allyEffect.turns, factor: spell.allyEffect.factor });
           const name = bt.id === "player" ? "あなた" : (partyRef.current.find(m => m.id === bt.id)?.name ?? bt.id);
-          msgs.push(`${name}の素早さが上がった！(${spell.allyEffect.turns}ターン)`);
+          msgs.push(`${name}の${statLabel}が上がった！(${spell.allyEffect.turns}ターン)`);
         }
-        speedBuffsRef.current = newBuffs;
-        setSpeedBuffedIds(new Set(newBuffs.keys()));
+        buffRef.current = newBuffs;
+        setBuffedIds(new Set(newBuffs.keys()));
         setEnemies(updated); enemiesRef.current = updated;
         pushCb(msgs, advanceActor);
         return;
@@ -997,7 +1001,7 @@ function BattlePageInner() {
           ? [{ id: "player" }, ...partyRef.current.filter(m => m.hp > 0).map(m => ({ id: m.id }))]
           : [getAllyList()[Math.min(allyTargetIdx, getAllyList().length - 1)]];
         for (const ht of healTargets) {
-          const healAmt = calcHealAmount(player.magic, spell.id);
+          const healAmt = calcHealAmount(combatant.magic, spell.id);
           if (ht.id === "player") {
             const newHp = Math.min(player.maxHp, playerHpRef.current + healAmt);
             setPlayerHp(newHp); playerHpRef.current = newHp;
@@ -1032,8 +1036,8 @@ function BattlePageInner() {
       } else {
         for (const t of targets) {
           const crit = tryCritical();
-          const rawDmg = calcMagicDamage(player.magic, spell, t.element, t.magicResist);
-          const dmg = Math.round(rawDmg * player.craftEffect.spellMultiplier * (crit ? CRIT_MULTIPLIER : 1));
+          const rawDmg = calcMagicDamage(combatant.magic, spell, t.element, t.magicResist);
+          const dmg = Math.round(rawDmg * combatant.craftEffect.spellMultiplier * (crit ? CRIT_MULTIPLIER : 1));
           flashEnemy(t.uid);
           updated = updated.map(e => e.uid === t.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
           const eff = (() => {
@@ -1169,7 +1173,11 @@ function BattlePageInner() {
           {["victory","defeat","ran"].includes(phase) && (
             <p className="text-xs text-yellow-400 mt-2 animate-pulse">▼ クリックまたはEnterでもどる</p>
           )}
-          {phase === "select"         && <p className="text-yellow-200 font-medium">コマンドを選んでください</p>}
+          {phase === "select"         && (
+            <p className="text-yellow-200 font-medium">
+              {actingMemberId ? `🎮 ${partyMembers.find(m => m.id === actingMemberId)?.name ?? ""}のコマンドを選んでください` : "コマンドを選んでください"}
+            </p>
+          )}
           {phase === "targeting"      && <p className="text-yellow-200 font-medium">← → でターゲット選択　Enterで決定</p>}
           {phase === "ally_targeting" && <p className="text-yellow-200 font-medium">← → で味方選択　Enterで決定</p>}
           {phase === "targeting" && (
@@ -1199,7 +1207,7 @@ function BattlePageInner() {
         {phase === "select" && (
           <div className="rounded-xl border-2 border-gray-500 bg-gray-800 p-3">
             <div className="grid grid-cols-2 gap-2">
-              {(["attack","magic","item","run"] as const).map((cmd) => {
+              {(actingMemberId ? (["attack","magic","item"] as const) : (["attack","magic","item","run"] as const)).map((cmd) => {
                 const labels = { attack:"たたかう", magic:"まほう", item:`どうぐ(${itemCount})`, run:"にげる" };
                 return (
                   <button
@@ -1238,7 +1246,7 @@ function BattlePageInner() {
               <span className="text-red-400 ml-1">（逆は×0.5）</span>
             </div>
             <div className="space-y-1 max-h-44 overflow-y-auto">
-              {spells.map((sp, i) => {
+              {activeSpells.map((sp, i) => {
                 // 選択中の敵に対する有利・不利を計算
                 const targetEnemy = enemies[targetIdx] ?? enemies[0];
                 const eff = (sp.element !== "none" && !sp.allyEffect && !sp.effect && targetEnemy)
@@ -1265,7 +1273,9 @@ function BattlePageInner() {
                     <span className="flex items-center gap-1">
                       {spellIdx === i ? "▶ " : ""}
                       {sp.name}{" "}
-                      {sp.allyEffect ? "⚡速↑" : sp.effect ? STATUS_LABEL[sp.effect.status] : ELEMENT_LABEL[sp.element]}
+                      {sp.allyEffect
+                        ? (sp.allyEffect.type === "speed_up" ? "⚡速↑" : sp.allyEffect.type === "atk_up" ? "💪攻↑" : "🛡️守↑")
+                        : sp.effect ? STATUS_LABEL[sp.effect.status] : ELEMENT_LABEL[sp.element]}
                       {effLabel}
                     </span>
                     <span className="text-xs opacity-80">
@@ -1353,6 +1363,8 @@ function BattlePageInner() {
                 Lv.{player.level} あなた（{JOB[player.jobClass]}）
               </span>
               {speedBuffedIds.has("player") && <span className="text-cyan-300 text-xs">⚡速↑</span>}
+              {atkBuffedIds.has("player") && <span className="text-pink-300 text-xs">💪攻↑</span>}
+              {defBuffedIds.has("player") && <span className="text-sky-300 text-xs">🛡️守↑</span>}
               {player.craftEffect.mpCostMultiplier < 1 && <span className="text-blue-300 text-xs">MP節約</span>}
               {player.craftEffect.poisonImmune && <span className="text-green-300 text-xs">毒無効</span>}
               {player.craftEffect.reflectDamage > 0 && <span className="text-orange-300 text-xs">反射{Math.round(player.craftEffect.reflectDamage*100)}%</span>}
@@ -1398,6 +1410,8 @@ function BattlePageInner() {
                   <span className={`text-xs font-bold ${m.hp <= 0 ? "text-gray-500" : "text-green-300"}`}>
                     {m.name}（{JOB[m.jobClass]}）
                     {speedBuffedIds.has(m.id) && <span className="ml-1 text-cyan-300">⚡速↑</span>}
+                    {atkBuffedIds.has(m.id) && <span className="ml-1 text-pink-300">💪攻↑</span>}
+                    {defBuffedIds.has(m.id) && <span className="ml-1 text-sky-300">🛡️守↑</span>}
                     {m.hp <= 0 && " 💀"}
                   </span>
                   <div className="flex gap-1 items-center">
