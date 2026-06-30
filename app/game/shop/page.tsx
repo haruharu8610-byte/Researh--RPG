@@ -74,9 +74,15 @@ export default function ShopPage() {
     showMsg(`${name}を${EXCHANGE_COST}個使って[${RARITY_LABEL[result.gained!.rarity]}]${result.gained!.name}と交換した！`);
   }
 
-  const shopItems = SHOP_ITEMS.filter(i =>
-    !i.festivalOnly && (tab === "item" ? ["potion","ether","throwable"].includes(i.category) : i.category === tab)
-  );
+  // 武器・防具はコモン/アンコモンのみ販売。レア以上はガチャ・クラフト限定（ガチャの価値を保つため）
+  const shopItems = SHOP_ITEMS.filter(i => {
+    if (i.festivalOnly) return false;
+    if (tab === "item") return ["potion","ether","throwable"].includes(i.category);
+    if (tab === "weapon" || tab === "armor") {
+      return i.category === tab && (i.rarity === "common" || i.rarity === "uncommon");
+    }
+    return false;
+  });
   const buyableMats = MATERIALS.filter(m => m.buyable);
   const sellableMats = MATERIALS.filter(m => m.sellValue && getMaterialQty(m.id) > 0);
   const exchangeableMats = MATERIALS.filter(m => !m.sellValue && getNextRarity(m.rarity) && getMaterialQty(m.id) > 0);
@@ -139,6 +145,12 @@ export default function ShopPage() {
             </button>
           ))}
         </div>
+
+        {(tab === "weapon" || tab === "armor") && (
+          <p className="text-[10px] text-gray-500">
+            ショップではコモン・アンコモンのみ販売しています。レア以上はガチャ・クラフトで入手してください。
+          </p>
+        )}
 
         {/* 素材ショップ */}
         {tab === "material" && (

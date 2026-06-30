@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import {
   getOwnedWeapons, getOwnedArmors, getEquippedWeapon, getEquippedArmor, equip, findItemById,
   registerCraftedItems, removeOwnedWeapon, removeOwnedArmor, sellPriceFor, getSeriesSetBonus,
+  EQUIPMENT_EXCHANGE_COST, getEquipmentNextRarity, exchangeEquipment,
   type ShopItem, type OwnedShopItem,
 } from "@/lib/equipment";
 import { CRAFT_RECIPES, type CraftRecipe } from "@/lib/materials";
@@ -129,7 +130,15 @@ export default function EquipmentPage() {
     }
   }
 
+  function handleExchange(item: OwnedShopItem) {
+    const result = exchangeEquipment(item.id);
+    if (!result.success) { showMsg(result.reason ?? "交換できません"); return; }
+    showMsg(`${item.name}を${EQUIPMENT_EXCHANGE_COST}個使って[${RARITY_LABEL[result.gained!.rarity ?? "common"]}]${result.gained!.name}と交換した！`);
+    refresh();
+  }
+
   const list = tab === "weapon" ? ownedWeapons : ownedArmors;
+  const exchangeableItems = list.filter(i => i.qty >= EQUIPMENT_EXCHANGE_COST && getEquipmentNextRarity(i.rarity ?? "common"));
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 p-4 font-mono">
@@ -193,6 +202,35 @@ export default function EquipmentPage() {
         {list.length === 0 && (
           <div className="text-center text-gray-500 text-sm py-8">
             まだ{tab === "weapon" ? "武器" : "防具"}を持っていません。ショップ・ガチャ・クラフトで入手しよう！
+          </div>
+        )}
+
+        {exchangeableItems.length > 0 && (
+          <div className="rounded-xl border-2 border-cyan-700 bg-cyan-950/20 p-3 space-y-2">
+            <div className="text-xs font-bold text-cyan-300">
+              🔄 装備交換所（同じ{tab === "weapon" ? "武器" : "防具"}{EQUIPMENT_EXCHANGE_COST}個→上位レアの{tab === "weapon" ? "武器" : "防具"}1個とランダム交換）
+            </div>
+            {exchangeableItems.map(item => {
+              const nextRarity = getEquipmentNextRarity(item.rarity ?? "common")!;
+              return (
+                <div key={item.id} className="flex items-center justify-between rounded-lg bg-gray-900/60 px-3 py-2">
+                  <div>
+                    <span className={`text-xs font-bold ${RARITY_COLOR[item.rarity ?? "common"]}`}>[{RARITY_LABEL[item.rarity ?? "common"]}]</span>
+                    <span className="text-sm text-white ml-2">{item.name}</span>
+                    <span className="text-xs text-gray-400 ml-2">×{item.qty}</span>
+                    <div className="text-[11px] text-gray-400 mt-0.5">
+                      {EQUIPMENT_EXCHANGE_COST}個 → <span className={RARITY_COLOR[nextRarity]}>[{RARITY_LABEL[nextRarity]}]</span>装備1個
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleExchange(item)}
+                    className="shrink-0 rounded px-3 py-1 text-xs font-bold bg-cyan-600 text-white hover:bg-cyan-500"
+                  >
+                    こうかん
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 

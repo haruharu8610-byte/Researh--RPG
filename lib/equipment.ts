@@ -228,6 +228,50 @@ export function sellPriceFor(item: ShopItem): number {
   return Math.round(item.cost * 0.5);
 }
 
+// ── 装備交換所：同じレアリティの装備を複数集めて上位の装備と交換 ─
+export const EQUIPMENT_EXCHANGE_COST = 3;
+
+const EQUIPMENT_RARITY_TIER_UP: Record<Rarity, Rarity | null> = {
+  common: "uncommon",
+  uncommon: "rare",
+  rare: "epic",
+  epic: "legendary",
+  legendary: null,
+};
+
+export function getEquipmentNextRarity(rarity: Rarity): Rarity | null {
+  return EQUIPMENT_RARITY_TIER_UP[rarity];
+}
+
+export type EquipmentExchangeResult = { success: boolean; gained?: ShopItem; reason?: string };
+
+/** 同じ武器/防具をEQUIPMENT_EXCHANGE_COST個消費し、同カテゴリ・1段階上のレアリティの装備とランダムに交換する */
+export function exchangeEquipment(itemId: string): EquipmentExchangeResult {
+  const item = findItemById(itemId);
+  if (!item || (item.category !== "weapon" && item.category !== "armor")) {
+    return { success: false, reason: "交換できない装備です" };
+  }
+  const nextRarity = getEquipmentNextRarity(item.rarity ?? "common");
+  if (!nextRarity) return { success: false, reason: "これ以上交換できません" };
+
+  const owned = item.category === "weapon" ? getOwnedWeapons() : getOwnedArmors();
+  const ownedQty = owned.find(i => i.id === itemId)?.qty ?? 0;
+  if (ownedQty < EQUIPMENT_EXCHANGE_COST) return { success: false, reason: "装備が足りません" };
+
+  const candidates = SHOP_ITEMS.filter(i => i.category === item.category && i.rarity === nextRarity && !i.festivalOnly);
+  if (!candidates.length) return { success: false, reason: "交換先の装備がありません" };
+
+  const ok = item.category === "weapon"
+    ? removeOwnedWeapon(itemId, EQUIPMENT_EXCHANGE_COST)
+    : removeOwnedArmor(itemId, EQUIPMENT_EXCHANGE_COST);
+  if (!ok) return { success: false, reason: "装備が足りません" };
+
+  const gained = candidates[Math.floor(Math.random() * candidates.length)];
+  if (item.category === "weapon") addOwnedWeapon(gained.id, 1);
+  else addOwnedArmor(gained.id, 1);
+  return { success: true, gained };
+}
+
 // ── 装備効果の集計 ──────────────────────────────────────────
 export function getEquipmentEffect(weapon: ShopItem | null, armor: ShopItem | null): CraftEffect {
   let effect = { ...DEFAULT_CRAFT_EFFECT };
