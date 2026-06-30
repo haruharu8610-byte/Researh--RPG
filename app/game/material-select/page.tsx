@@ -40,14 +40,6 @@ export default function MaterialSelectPage() {
           🎲 ランダムで挑む（未討伐優先）
         </button>
 
-        <button
-          onClick={() => { window.location.href = "/game/material-auto"; }}
-          className="w-full rounded-xl border-2 border-fuchsia-600 bg-fuchsia-950 py-3 text-sm font-bold text-fuchsia-300 hover:bg-fuchsia-900 transition-colors"
-        >
-          ⚡ 10連オート戦闘
-          <div className="text-[10px] font-normal text-fuchsia-400 mt-0.5">ランダム出現の敵と自動で10連戦（コマンド操作なし）</div>
-        </button>
-
         {selectable.length === 0 ? (
           <div className="text-center text-gray-500 text-sm py-8">
             まだ倒した敵がいません。まずは通常ダンジョンや素材ダンジョンを「ランダムで挑む」でプレイしてみよう！
