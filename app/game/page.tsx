@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import GameCanvas, { type JobClass } from "@/components/GameCanvas";
 import JobClassSelector from "@/components/JobClassSelector";
-import { checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold } from "@/lib/gold";
+import { checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold, getLoginStreak } from "@/lib/gold";
 import { getEquippedWeapon, getEquippedArmor, getEquipmentEffect } from "@/lib/equipment";
 import { calcPlayerStats, getFloor } from "@/lib/battle";
 import { syncPlayerState } from "@/lib/playerState";
@@ -34,6 +34,7 @@ export default function GamePage() {
   const [error, setError] = useState("");
   const [celebration, setCelebration] = useState<string | null>(null);
   const [gold, setGold] = useState(0);
+  const [loginStreak, setLoginStreak] = useState(0);
   const [bonusMsg, setBonusMsg] = useState<string | null>(null);
   const [equippedWeaponId, setEquippedWeaponId] = useState<string | null>(null);
   const [equippedArmorId,  setEquippedArmorId]  = useState<string | null>(null);
@@ -76,7 +77,7 @@ export default function GamePage() {
     const taskGold  = checkTaskBonus(data.completedTasks);
     const studyGold = checkStudyBonus(data.studyTotalMinutes ?? 0);
     const msgs: string[] = [];
-    if (loginGold > 0) msgs.push(`ログインボーナス +${loginGold}G！`);
+    if (loginGold > 0) msgs.push(`ログインボーナス +${loginGold}G！（${getLoginStreak()}日連続）`);
     if (taskGold  > 0) msgs.push(`タスク完了ボーナス +${taskGold}G！`);
     if (studyGold > 0) msgs.push(`自習ボーナス +${studyGold}G +${studyGold}EXP！📚`);
     if (msgs.length) {
@@ -84,6 +85,7 @@ export default function GamePage() {
       setTimeout(() => setBonusMsg(null), 4000);
     }
     setGold(getGold());
+    setLoginStreak(getLoginStreak());
   }, []);
 
   useEffect(() => {
@@ -170,6 +172,9 @@ export default function GamePage() {
               📋 タスクマネージャー
             </a>
             <span className="text-yellow-400 font-bold text-sm">💰 {gold}G</span>
+            {loginStreak > 0 && (
+              <span className="text-orange-300 text-xs font-bold" title="連続ログイン日数">🔥{loginStreak}日</span>
+            )}
             <button onClick={handleLogout} className="text-xs text-gray-500 hover:text-gray-300">ログアウト</button>
           </div>
         </div>
