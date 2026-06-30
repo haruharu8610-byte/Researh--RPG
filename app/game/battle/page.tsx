@@ -98,9 +98,17 @@ function MpBar({ current, max, blocks = 10 }: { current: number; max: number; bl
 export default function BattlePage() {
   return (
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-gray-400 font-mono">よみこみちゅう...</div>}>
-      <BattlePageInner />
+      <BattlePageModeKeyed />
     </Suspense>
   );
+}
+
+// mode（通常/素材/ゴールド）が変わったら強制的に再マウントし、
+// 直前のダンジョンの状態が残ってしまわないようにする
+function BattlePageModeKeyed() {
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("mode") ?? "normal";
+  return <BattlePageInner key={mode} />;
 }
 
 function BattlePageInner() {
