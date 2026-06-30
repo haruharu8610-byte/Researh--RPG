@@ -285,6 +285,15 @@ export const ENEMIES: EnemyType[] = [
     spellIds: ["manusa", "rariho"],
     dropTable: [{ materialId: "ghost_orb", chance: 0.45 }, { materialId: "magic_stone", chance: 0.20 }],
   },
+  {
+    id: "giant_toad", name: "ジャイアントトード", maxHp: 33, attack: 10, defense: 5, magic: 4,
+    expReward: 20, goldReward: 24, minLevel: 2,
+    color: 0x65a30d, shape: "lizard", element: "water",
+    physResist: 1, magicResist: 1, speed: 8,
+    statusResist: { poison: 0.6, paralysis: 0.4, sleep: 0.5, confuse: 0.3 },
+    spellIds: ["hyado"],
+    dropTable: [{ materialId: "toad_skin", chance: 0.55 }, { materialId: "herb", chance: 0.30 }],
+  },
   // ── 中盤〜終盤（Lv5〜） ──────────────────────────────────────
   {
     id: "lizard", name: "リザードマン", maxHp: 55, attack: 18, defense: 8, magic: 5,
