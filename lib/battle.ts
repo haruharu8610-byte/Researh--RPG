@@ -139,28 +139,28 @@ export const SKILL_WEAPON_MATCH_MULTIPLIER = 1.4;
 
 export const SKILLS: Skill[] = [
   // 無属性ライン
-  { id: "kaishin_giri",  name: "かいしんぎり",     element: "none",  power: 18, mpCost: 4,  minLevel: 2,  target: "single", lineId: "none_skill" },
-  { id: "goku_ichigeki", name: "ごくいちげき",     element: "none",  power: 45, mpCost: 10, minLevel: 9,  target: "single", lineId: "none_skill" },
+  { id: "kaishin_giri",  name: "かいしんぎり",     element: "none",  power: 32, mpCost: 4,  minLevel: 2,  target: "single", lineId: "none_skill" },
+  { id: "goku_ichigeki", name: "ごくいちげき",     element: "none",  power: 90, mpCost: 10, minLevel: 9,  target: "single", lineId: "none_skill" },
 
   // 🔥火属性ライン
-  { id: "kaen_giri",     name: "かえんぎり",       element: "fire",  power: 16, mpCost: 4,  minLevel: 1,  target: "single", lineId: "fire_skill" },
-  { id: "gouka_zan",     name: "ごうかざん",       element: "fire",  power: 42, mpCost: 10, minLevel: 8,  target: "single", lineId: "fire_skill" },
+  { id: "kaen_giri",     name: "かえんぎり",       element: "fire",  power: 28, mpCost: 4,  minLevel: 1,  target: "single", lineId: "fire_skill" },
+  { id: "gouka_zan",     name: "ごうかざん",       element: "fire",  power: 80, mpCost: 10, minLevel: 8,  target: "single", lineId: "fire_skill" },
 
   // 💧水属性ライン
-  { id: "hyoretsu_zan",  name: "ひょうれつざん",   element: "water", power: 16, mpCost: 4,  minLevel: 1,  target: "single", lineId: "water_skill" },
-  { id: "zekkai_zan",    name: "ぜっかいざん",     element: "water", power: 42, mpCost: 10, minLevel: 8,  target: "single", lineId: "water_skill" },
+  { id: "hyoretsu_zan",  name: "ひょうれつざん",   element: "water", power: 28, mpCost: 4,  minLevel: 1,  target: "single", lineId: "water_skill" },
+  { id: "zekkai_zan",    name: "ぜっかいざん",     element: "water", power: 80, mpCost: 10, minLevel: 8,  target: "single", lineId: "water_skill" },
 
   // 🌪️風属性ライン
-  { id: "tsumuji_giri",  name: "つむじぎり",       element: "wind",  power: 16, mpCost: 4,  minLevel: 1,  target: "single", lineId: "wind_skill" },
-  { id: "shinku_renzan", name: "しんくうれんざん", element: "wind",  power: 42, mpCost: 10, minLevel: 8,  target: "single", lineId: "wind_skill" },
+  { id: "tsumuji_giri",  name: "つむじぎり",       element: "wind",  power: 28, mpCost: 4,  minLevel: 1,  target: "single", lineId: "wind_skill" },
+  { id: "shinku_renzan", name: "しんくうれんざん", element: "wind",  power: 80, mpCost: 10, minLevel: 8,  target: "single", lineId: "wind_skill" },
 
   // 🌍土属性ライン
-  { id: "daichi_kudaki", name: "だいちくだき",     element: "earth", power: 16, mpCost: 4,  minLevel: 1,  target: "single", lineId: "earth_skill" },
-  { id: "daichi_reppa",  name: "だいちれっぱ",     element: "earth", power: 42, mpCost: 10, minLevel: 8,  target: "single", lineId: "earth_skill" },
+  { id: "daichi_kudaki", name: "だいちくだき",     element: "earth", power: 28, mpCost: 4,  minLevel: 1,  target: "single", lineId: "earth_skill" },
+  { id: "daichi_reppa",  name: "だいちれっぱ",     element: "earth", power: 80, mpCost: 10, minLevel: 8,  target: "single", lineId: "earth_skill" },
 
   // 全体攻撃技
-  { id: "renzoku_giri",  name: "れんぞくぎり",     element: "none",  power: 20, mpCost: 9,  minLevel: 6,  target: "all", lineId: "all_skill" },
-  { id: "bakuretsu_zan", name: "だいばくれつざん", element: "fire",  power: 35, mpCost: 16, minLevel: 13, target: "all", lineId: "all_fire_skill" },
+  { id: "renzoku_giri",  name: "れんぞくぎり",     element: "none",  power: 38, mpCost: 9,  minLevel: 6,  target: "all", lineId: "all_skill" },
+  { id: "bakuretsu_zan", name: "だいばくれつざん", element: "fire",  power: 70, mpCost: 16, minLevel: 13, target: "all", lineId: "all_fire_skill" },
 ];
 
 /** 各ラインの最高ティアのみ返す */
@@ -175,7 +175,8 @@ export function getAvailableSkills(level: number): Skill[] {
 }
 
 export function calcSkillDamage(attack: number, def: number, skill: Skill, weaponElement: Element, resistMult = 1): number {
-  const base = Math.max(1, (attack + skill.power) - def);
+  // 技は武器の力を増幅する物理技なので、攻撃力に倍率をかけてから威力を足し、防御力を引く
+  const base = Math.max(1, Math.floor(attack * 1.5) + skill.power - def);
   const v = Math.max(1, Math.floor(base * 0.2));
   let raw = base + Math.floor(Math.random() * (v * 2 + 1)) - v;
   if (skill.element !== "none" && skill.element === weaponElement) raw = Math.round(raw * SKILL_WEAPON_MATCH_MULTIPLIER);
