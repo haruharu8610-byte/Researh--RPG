@@ -358,6 +358,16 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     attackBonus: 52, magicBonus: 10,
     specialEffect: { type: "mp_cost_reduce", value: 18, label: "MP消費-18%" },
   },
+  {
+    id: "craft_archmage_staff",
+    name: "だいけんじゃのつえ",
+    category: "weapon", rarity: "legendary",
+    materials: [{ id: "legend_ore", qty: 1 }, { id: "rare_crystal", qty: 2 }, { id: "angel_feather", qty: 1 }],
+    goldCost: 9000,
+    description: "歴代の大賢者が極めた、魔力を極限まで高める杖",
+    attackBonus: 18, magicBonus: 110,
+    specialEffect: { type: "spell_power_up", value: 55, label: "魔法威力+55%" },
+  },
 
   // ── クラフト限定：レア防具 ───────────────────────────────────
   {
