@@ -23,6 +23,7 @@ import { getParty, type PartyMemberData } from "@/lib/party";
 import { MATERIALS, addMaterial } from "@/lib/materials";
 import { RARITY_COLOR, RARITY_LABEL, DEFAULT_CRAFT_EFFECT } from "@/lib/rarity";
 import { syncPlayerState } from "@/lib/playerState";
+import { recordDefeatedEnemy } from "@/lib/bestiary";
 
 const CRAFTED_KEY = "rpg_crafted_list";
 function getCraftedIds(): string[] {
@@ -121,6 +122,7 @@ function BattlePageInner() {
   const victoryKey = isMaterialMode ? "rpg_material_victories" : isGoldMode ? "rpg_gold_victories" : VICTORY_KEY;
   const dungeonLabel = isMaterialMode ? "🪨 素材ダンジョン" : isGoldMode ? "💰 ゴールドダンジョン" : "🗺️";
   const isFlatDungeon = isMaterialMode || isGoldMode; // 階層なし（常に固定難易度）
+  const forcedEnemyId = isMaterialMode ? (searchParams.get("enemy") ?? undefined) : undefined;
 
   // ── Display state ──────────────────────────────────────
   const [player, setPlayer]             = useState<PlayerStats | null>(null);
@@ -249,6 +251,7 @@ function BattlePageInner() {
   // ── Victory check ──────────────────────────────────────
   function checkVictory(updatedEnemies: ActiveEnemy[]): boolean {
     if (!updatedEnemies.every(e => e.hp <= 0)) return false;
+    for (const e of updatedEnemies) recordDefeatedEnemy(e.id);
     const nextFloor = isFlatDungeon ? 1 : advanceFloor(floorKey);
     const goldMult = isMaterialMode ? 0.5 : isGoldMode ? 3 : 1;
     const totalGold = Math.round(updatedEnemies.reduce((s, e) => s + e.goldReward, 0) * goldMult);
@@ -677,7 +680,7 @@ function BattlePageInner() {
 
       const currentFloor = isFlatDungeon ? 1 : getFloor(floorKey);
       const boss = !isFlatDungeon && currentFloor % 5 === 0;
-      const grp = getFloorEnemyGroup(level, currentFloor, { goldDungeon: isGoldMode });
+      const grp = getFloorEnemyGroup(level, currentFloor, { goldDungeon: isGoldMode, forcedEnemyId });
       const vic = parseInt(localStorage.getItem(victoryKey) ?? "0", 10);
       const availableSpells = getAvailableSpells(level, job);
 

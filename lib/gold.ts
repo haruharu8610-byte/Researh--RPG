@@ -22,19 +22,23 @@ export function spendGold(amount: number): boolean {
 const LOGIN_STREAK_KEY = "rpg_login_streak";
 const MAX_LOGIN_STREAK = 7;
 const LOGIN_BONUS_PER_DAY = 50;
+const FESTIVAL_LOGIN_BONUS = 300;
 
 export function getLoginStreak(): number {
   return parseInt(localStorage.getItem(LOGIN_STREAK_KEY) ?? "0", 10);
 }
 
+export type LoginBonusResult = { total: number; festivalBonus: number };
+
 /**
  * ログインボーナス。当日初回のみ付与。連続ログインするほどGが増え、最大7日で頭打ち。
- * 連続が途切れたら1日目からやり直し。0なら本日分は受け取り済み。
+ * 連続が途切れたら1日目からやり直し。フェス期間中（毎月1〜7日）は+300Gの限定ボーナスが付く。
+ * totalが0なら本日分は受け取り済み。
  */
-export function checkLoginBonus(): number {
+export function checkLoginBonus(): LoginBonusResult {
   const today = new Date().toDateString();
   const lastLogin = localStorage.getItem(LAST_LOGIN_KEY);
-  if (lastLogin === today) return 0;
+  if (lastLogin === today) return { total: 0, festivalBonus: 0 };
 
   const yesterday = new Date(Date.now() - 86400000).toDateString();
   const prevStreak = getLoginStreak();
@@ -43,9 +47,12 @@ export function checkLoginBonus(): number {
   localStorage.setItem(LAST_LOGIN_KEY, today);
   localStorage.setItem(LOGIN_STREAK_KEY, String(streak));
 
-  const bonus = LOGIN_BONUS_PER_DAY * streak;
-  addGold(bonus);
-  return bonus;
+  // 循環import回避のため、フェス期間判定はここで直接行う（毎月1〜7日）
+  const isFestival = new Date().getDate() <= 7;
+  const festivalBonus = isFestival ? FESTIVAL_LOGIN_BONUS : 0;
+  const total = LOGIN_BONUS_PER_DAY * streak + festivalBonus;
+  addGold(total);
+  return { total, festivalBonus };
 }
 
 /** タスク完了ボーナス。新たに完了したタスク1件につき300G。 */

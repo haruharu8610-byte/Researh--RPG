@@ -476,10 +476,27 @@ export function advanceFloor(key: string = FLOOR_KEY): number {
   return next;
 }
 
-export function getFloorEnemyGroup(playerLevel: number, floor: number, opts?: { goldDungeon?: boolean }): ActiveEnemy[] {
+export function getFloorEnemyGroup(
+  playerLevel: number, floor: number,
+  opts?: { goldDungeon?: boolean; forcedEnemyId?: string },
+): ActiveEnemy[] {
   const isBoss = floor % 5 === 0;
   const normalEnemies = ENEMIES.filter(e => !e.isRare && !e.goldOnly);
   const rareEnemies   = ENEMIES.filter(e => e.isRare && (!e.goldOnly || opts?.goldDungeon));
+
+  // 指定された敵を強制出現させる（素材ダンジョンの敵選択用。レアモンスターは対象外）
+  if (opts?.forcedEnemyId) {
+    const forced = normalEnemies.find(e => e.id === opts.forcedEnemyId);
+    if (forced) {
+      const count = Math.floor(Math.random() * 3) + 1;
+      const hpMult  = 1 + (floor - 1) * 0.18;
+      const atkMult = 1 + (floor - 1) * 0.12;
+      return Array.from({ length: count }, (_, i) => {
+        const hp = Math.round(forced.maxHp * hpMult);
+        return { ...forced, uid: `${forced.id}-${i}`, hp, floorHp: hp, floorAtk: Math.round(forced.attack * atkMult) };
+      });
+    }
+  }
 
   // 8%でレアモンスター単体（ボスフロアでは出現しない）
   if (!isBoss && rareEnemies.length > 0 && Math.random() < 0.08) {

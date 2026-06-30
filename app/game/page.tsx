@@ -89,11 +89,14 @@ export default function GamePage() {
     setStats(data);
 
     // ログインボーナス・タスクボーナス
-    const loginGold = checkLoginBonus();
+    const loginBonus = checkLoginBonus();
     const taskGold  = checkTaskBonus(data.completedTasks);
     const studyGold = checkStudyBonus(data.studyTotalMinutes ?? 0);
     const msgs: string[] = [];
-    if (loginGold > 0) msgs.push(`ログインボーナス +${loginGold}G！（${getLoginStreak()}日連続）`);
+    if (loginBonus.total > 0) {
+      msgs.push(`ログインボーナス +${loginBonus.total}G！（${getLoginStreak()}日連続）`);
+      if (loginBonus.festivalBonus > 0) msgs.push(`🎉フェス限定ログインボーナス +${loginBonus.festivalBonus}G！`);
+    }
     if (taskGold  > 0) msgs.push(`タスク完了ボーナス +${taskGold}G！`);
     if (studyGold > 0) msgs.push(`自習ボーナス +${studyGold}G +${studyGold}EXP！📚`);
     if (msgs.length) {
@@ -265,7 +268,7 @@ export default function GamePage() {
             🔨 クラフト
           </button>
           <button
-            onClick={() => { window.location.href = "/game/battle?mode=material"; }}
+            onClick={() => { window.location.href = "/game/material-select"; }}
             className="rounded-xl border border-teal-600 bg-teal-950 py-3 text-sm font-bold text-teal-300 hover:bg-teal-900 transition-colors"
           >
             🪨 素材ダンジョン
