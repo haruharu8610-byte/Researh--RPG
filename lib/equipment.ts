@@ -105,30 +105,57 @@ export function findItemById(id: string | null | undefined): ShopItem | null {
   return allItems().find(i => i.id === id) ?? null;
 }
 
-// ── 所持装備（コレクション） ─────────────────────────────────
+// ── 所持装備（コレクション、被り可） ─────────────────────────
 const OWNED_WEAPONS_KEY = "rpg_owned_weapons";
 const OWNED_ARMORS_KEY  = "rpg_owned_armors";
 
-function getOwnedIds(key: string): string[] {
+type OwnedEntry = { id: string; qty: number };
+
+function getOwnedEntries(key: string): OwnedEntry[] {
   if (typeof localStorage === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(key) ?? "[]"); } catch { return []; }
 }
-function addOwnedId(key: string, id: string): void {
-  const ids = getOwnedIds(key);
-  if (!ids.includes(id)) { ids.push(id); localStorage.setItem(key, JSON.stringify(ids)); }
+function addOwnedEntry(key: string, id: string, qty = 1): void {
+  const entries = getOwnedEntries(key);
+  const e = entries.find(x => x.id === id);
+  if (e) e.qty += qty; else entries.push({ id, qty });
+  localStorage.setItem(key, JSON.stringify(entries));
 }
-export function addOwnedWeapon(id: string): void { addOwnedId(OWNED_WEAPONS_KEY, id); }
-export function addOwnedArmor(id: string): void  { addOwnedId(OWNED_ARMORS_KEY, id); }
+function removeOwnedEntry(key: string, id: string, qty = 1): boolean {
+  const entries = getOwnedEntries(key);
+  const e = entries.find(x => x.id === id);
+  if (!e || e.qty < qty) return false;
+  e.qty -= qty;
+  if (e.qty <= 0) entries.splice(entries.indexOf(e), 1);
+  localStorage.setItem(key, JSON.stringify(entries));
+  return true;
+}
 
-/** 所持している武器一覧（購入・ガチャ・クラフトしたもの全て） */
-export function getOwnedWeapons(): ShopItem[] {
-  const ids = getOwnedIds(OWNED_WEAPONS_KEY);
-  return allItems().filter(i => i.category === "weapon" && (ids.includes(i.id) || _craftedItems.some(c => c.id === i.id)));
+export function addOwnedWeapon(id: string, qty = 1): void { addOwnedEntry(OWNED_WEAPONS_KEY, id, qty); }
+export function addOwnedArmor(id: string, qty = 1): void  { addOwnedEntry(OWNED_ARMORS_KEY, id, qty); }
+export function removeOwnedWeapon(id: string, qty = 1): boolean { return removeOwnedEntry(OWNED_WEAPONS_KEY, id, qty); }
+export function removeOwnedArmor(id: string, qty = 1): boolean  { return removeOwnedEntry(OWNED_ARMORS_KEY, id, qty); }
+
+export type OwnedShopItem = ShopItem & { qty: number };
+
+/** 所持している武器一覧（購入・ガチャしたもの。被りはqtyで表示。クラフト品はqty1固定で売却不可） */
+export function getOwnedWeapons(): OwnedShopItem[] {
+  const entries = getOwnedEntries(OWNED_WEAPONS_KEY);
+  return allItems()
+    .filter(i => i.category === "weapon" && (entries.some(e => e.id === i.id) || _craftedItems.some(c => c.id === i.id)))
+    .map(i => ({ ...i, qty: entries.find(e => e.id === i.id)?.qty ?? 0 }));
 }
-/** 所持している防具一覧（購入・ガチャ・クラフトしたもの全て） */
-export function getOwnedArmors(): ShopItem[] {
-  const ids = getOwnedIds(OWNED_ARMORS_KEY);
-  return allItems().filter(i => i.category === "armor" && (ids.includes(i.id) || _craftedItems.some(c => c.id === i.id)));
+/** 所持している防具一覧（購入・ガチャしたもの。被りはqtyで表示。クラフト品はqty0固定で売却不可） */
+export function getOwnedArmors(): OwnedShopItem[] {
+  const entries = getOwnedEntries(OWNED_ARMORS_KEY);
+  return allItems()
+    .filter(i => i.category === "armor" && (entries.some(e => e.id === i.id) || _craftedItems.some(c => c.id === i.id)))
+    .map(i => ({ ...i, qty: entries.find(e => e.id === i.id)?.qty ?? 0 }));
+}
+
+/** 装備の売却額（購入価格の50%。フェス限定・クラフト品は売却不可） */
+export function sellPriceFor(item: ShopItem): number {
+  return Math.round(item.cost * 0.5);
 }
 
 // ── 装備効果の集計 ──────────────────────────────────────────

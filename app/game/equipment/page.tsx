@@ -6,11 +6,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   getOwnedWeapons, getOwnedArmors, getEquippedWeapon, getEquippedArmor, equip,
-  registerCraftedItems, type ShopItem,
+  registerCraftedItems, removeOwnedWeapon, removeOwnedArmor, sellPriceFor,
+  type ShopItem, type OwnedShopItem,
 } from "@/lib/equipment";
 import { CRAFT_RECIPES, type CraftRecipe } from "@/lib/materials";
 import { getParty, setPartyMemberWeapon, setPartyMemberArmor, type PartyMemberData } from "@/lib/party";
-import { RARITY_LABEL, RARITY_COLOR, RARITY_BORDER, RARITY_BG, equipRarityFx } from "@/lib/rarity";
+import { addGold } from "@/lib/gold";
+import { RARITY_LABEL, RARITY_COLOR, RARITY_BORDER, RARITY_BG, equipRarityFx, type Rarity } from "@/lib/rarity";
+
+const HIGH_RARITIES: Rarity[] = ["epic", "legendary"];
 
 const CRAFTED_KEY = "rpg_crafted_list";
 function getCraftedList(): string[] {
@@ -35,12 +39,13 @@ export default function EquipmentPage() {
   const [tab, setTab] = useState<"weapon" | "armor">("weapon");
   const [targetId, setTargetId] = useState<"player" | string>("player");
   const [party, setParty] = useState<PartyMemberData[]>([]);
-  const [ownedWeapons, setOwnedWeapons] = useState<ShopItem[]>([]);
-  const [ownedArmors, setOwnedArmors] = useState<ShopItem[]>([]);
+  const [ownedWeapons, setOwnedWeapons] = useState<OwnedShopItem[]>([]);
+  const [ownedArmors, setOwnedArmors] = useState<OwnedShopItem[]>([]);
   const [equippedWeaponId, setEquippedWeaponId] = useState<string | null>(null);
   const [equippedArmorId, setEquippedArmorId] = useState<string | null>(null);
   const [playerJob, setPlayerJob] = useState("warrior");
   const [message, setMessage] = useState("");
+  const [sellTarget, setSellTarget] = useState<OwnedShopItem | null>(null);
 
   const refresh = useCallback(() => {
     setOwnedWeapons(getOwnedWeapons());
@@ -82,6 +87,24 @@ export default function EquipmentPage() {
       showMsg(`${currentTarget.name}に${item.name}をそうびした！`);
     }
     refresh();
+  }
+
+  function executeSell(item: OwnedShopItem) {
+    const ok = tab === "weapon" ? removeOwnedWeapon(item.id, 1) : removeOwnedArmor(item.id, 1);
+    if (!ok) return;
+    const price = sellPriceFor(item);
+    addGold(price);
+    showMsg(`${item.name}を${price}Gで売却した！`);
+    setSellTarget(null);
+    refresh();
+  }
+
+  function handleSellClick(item: OwnedShopItem) {
+    if (item.rarity && HIGH_RARITIES.includes(item.rarity)) {
+      setSellTarget(item);
+    } else {
+      executeSell(item);
+    }
   }
 
   const list = tab === "weapon" ? ownedWeapons : ownedArmors;
@@ -148,19 +171,20 @@ export default function EquipmentPage() {
           {list.map(item => {
             const isEquipped = item.id === currentlyEquippedId;
             const fx = equipRarityFx(item.rarity, item.category);
+            const sellable = item.qty > 0;
             return (
-              <button
+              <div
                 key={item.id}
-                onClick={() => handleEquip(item)}
                 className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
-                  isEquipped ? "border-green-500 bg-green-950/30" : `${RARITY_BORDER[item.rarity ?? "common"]} ${RARITY_BG[item.rarity ?? "common"]} hover:border-gray-400`
+                  isEquipped ? "border-green-500 bg-green-950/30" : `${RARITY_BORDER[item.rarity ?? "common"]} ${RARITY_BG[item.rarity ?? "common"]}`
                 } ${fx}`}
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <button onClick={() => handleEquip(item)} className="flex-1 text-left hover:opacity-80">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs font-bold ${RARITY_COLOR[item.rarity ?? "common"]}`}>[{RARITY_LABEL[item.rarity ?? "common"]}]</span>
                       <span className="text-sm font-bold text-white">{item.name}</span>
+                      {sellable && <span className="text-xs text-gray-400">×{item.qty}</span>}
                       {isEquipped && <span className="text-xs text-green-400 font-bold">✓ そうび中</span>}
                     </div>
                     <div className="text-xs text-gray-400 mt-1">{item.description}</div>
@@ -170,13 +194,56 @@ export default function EquipmentPage() {
                       {item.magicBonus ? <span>MAG+{item.magicBonus}</span> : null}
                       {item.statusResist ? <span>耐性+{Math.round(item.statusResist * 100)}%</span> : null}
                     </div>
-                  </div>
+                  </button>
+                  {sellable && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSellClick(item); }}
+                      className="shrink-0 text-xs text-red-400 hover:text-red-300 border border-red-800 rounded px-2 py-1"
+                    >
+                      💰売却
+                      <div className="text-[10px] text-gray-500">{sellPriceFor(item)}G</div>
+                    </button>
+                  )}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
       </div>
+
+      {/* 高レア度売却の警告モーダル */}
+      {sellTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-sm rounded-2xl border-2 border-red-600 bg-gray-900 p-5 space-y-3">
+            <div className="text-center">
+              <div className="text-3xl">⚠️</div>
+              <h2 className="mt-2 text-base font-bold text-red-400">高レア度装備の売却確認</h2>
+            </div>
+            <div className={`rounded-lg border p-3 text-center ${RARITY_BORDER[sellTarget.rarity ?? "common"]} ${RARITY_BG[sellTarget.rarity ?? "common"]}`}>
+              <span className={`text-xs font-bold ${RARITY_COLOR[sellTarget.rarity ?? "common"]}`}>[{RARITY_LABEL[sellTarget.rarity ?? "common"]}]</span>
+              <div className="text-sm font-bold text-white mt-1">{sellTarget.name}</div>
+            </div>
+            <p className="text-xs text-gray-300 text-center leading-relaxed">
+              これは入手困難な高レア度の装備です。本当に{sellPriceFor(sellTarget)}Gで売却しますか？<br />
+              この操作は取り消せません。
+            </p>
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                onClick={() => setSellTarget(null)}
+                className="rounded-lg border border-gray-600 py-2 text-sm text-gray-300 hover:bg-gray-800"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => executeSell(sellTarget)}
+                className="rounded-lg border border-red-600 bg-red-950 py-2 text-sm font-bold text-red-300 hover:bg-red-900"
+              >
+                売却する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
