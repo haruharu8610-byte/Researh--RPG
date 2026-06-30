@@ -1,4 +1,5 @@
 import { DEFAULT_CRAFT_EFFECT, type CraftEffect } from "@/lib/rarity";
+import { isFestivalActive } from "@/lib/festival";
 
 export type Element = "fire" | "water" | "wind" | "earth" | "none";
 export type EnemyShape = "slime" | "bat" | "scorpion" | "golem" | "dragon" | "skeleton" | "ghost" | "orc" | "mushroom" | "lizard" | "mage" | "wolf";
@@ -563,8 +564,9 @@ export function getFloorEnemyGroup(
     }
   }
 
-  // 8%でレアモンスター単体（ボスフロアでは出現しない）
-  if (!isBoss && rareEnemies.length > 0 && Math.random() < 0.08) {
+  // 8%でレアモンスター単体（ボスフロアでは出現しない。フェス期間中は16%にアップ）
+  const rareChance = isFestivalActive() ? 0.16 : 0.08;
+  if (!isBoss && rareEnemies.length > 0 && Math.random() < rareChance) {
     const base = rareEnemies[Math.floor(Math.random() * rareEnemies.length)];
     const hp = base.maxHp;
     return [{ ...base, uid: `${base.id}-0`, hp, floorHp: hp, floorAtk: base.attack }];

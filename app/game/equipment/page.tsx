@@ -81,7 +81,25 @@ export default function EquipmentPage() {
   const targetArmor  = targetId === "player" ? getEquippedArmor()  : findItemById(currentMember?.armorId);
   const setBonus = getSeriesSetBonus(targetWeapon, targetArmor);
 
-  function handleEquip(item: ShopItem) {
+  /** 自分・仲間の中で、対象を除いて現在その装備をそうびしている人数を数える（被り防止用） */
+  function countEquippedElsewhere(itemId: string, excludeTargetId: string): number {
+    let count = 0;
+    if (excludeTargetId !== "player" && (tab === "weapon" ? equippedWeaponId : equippedArmorId) === itemId) count++;
+    for (const m of party) {
+      if (m.id === excludeTargetId) continue;
+      if ((tab === "weapon" ? m.weaponId : m.armorId) === itemId) count++;
+    }
+    return count;
+  }
+
+  function handleEquip(item: OwnedShopItem) {
+    if (item.id !== currentlyEquippedId && item.qty > 0) {
+      const usedElsewhere = countEquippedElsewhere(item.id, targetId);
+      if (usedElsewhere >= item.qty) {
+        showMsg(`${item.name}は他で使用中です（所持数: ${item.qty}）。先に外すか追加で入手してください`);
+        return;
+      }
+    }
     if (targetId === "player") {
       equip(item);
       showMsg(`${currentTarget.name}に${item.name}をそうびした！`);

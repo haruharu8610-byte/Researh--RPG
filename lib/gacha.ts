@@ -1,6 +1,9 @@
 import { MATERIALS, type Material } from "@/lib/materials";
 import { SHOP_ITEMS, type ShopItem } from "@/lib/equipment";
 import type { Rarity } from "@/lib/rarity";
+import { isFestivalActive } from "@/lib/festival";
+
+export { isFestivalActive };
 
 export type GachaKind = "item" | "weapon" | "armor";
 
@@ -53,11 +56,6 @@ const GUARANTEED_EVENT_CHANCE_FESTIVAL = 0.06;
 const consumablePool = SHOP_ITEMS.filter(i => ["potion", "ether", "throwable"].includes(i.category));
 const weaponPool     = SHOP_ITEMS.filter(i => i.category === "weapon");
 const armorPool      = SHOP_ITEMS.filter(i => i.category === "armor");
-
-/** 毎月1日〜7日をフェス期間とする */
-export function isFestivalActive(date: Date = new Date()): boolean {
-  return date.getDate() <= 7;
-}
 
 function currentWeights(): Array<{ rarity: Rarity; weight: number }> {
   return isFestivalActive() ? RARITY_WEIGHTS_FESTIVAL : RARITY_WEIGHTS;
