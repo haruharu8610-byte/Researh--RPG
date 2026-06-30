@@ -143,6 +143,7 @@ export type EnemyType = {
   spellIds: string[];
   dropTable: DropEntry[];
   isRare?: boolean; // レアモンスターフラグ
+  goldOnly?: boolean; // ゴールドダンジョンでのみ出現するレアモンスター
 };
 
 export const ENEMIES: EnemyType[] = [
@@ -427,6 +428,30 @@ export const ENEMIES: EnemyType[] = [
     dropTable: [{ materialId: "legend_ore", chance: 1.0 }, { materialId: "angel_feather", chance: 0.60 }],
     isRare: true,
   },
+
+  // ── ゴールドダンジョン限定 ──────────────────────────────────
+  {
+    id: "gold_golem", name: "ゴールドゴーレム",
+    maxHp: 90, attack: 28, defense: 18, magic: 5,
+    expReward: 120, goldReward: 80, minLevel: 1,
+    color: 0xfbbf24, shape: "golem", element: "earth",
+    physResist: 1, magicResist: 1, speed: 9,
+    statusResist: { poison: 0.8, paralysis: 0.8, sleep: 0.8, confuse: 0.8 },
+    spellIds: [],
+    dropTable: [{ materialId: "gold_idol", chance: 1.0 }],
+    isRare: true, goldOnly: true,
+  },
+  {
+    id: "king_chest", name: "おたからキング",
+    maxHp: 60, attack: 15, defense: 10, magic: 0,
+    expReward: 200, goldReward: 150, minLevel: 1,
+    color: 0xfacc15, shape: "slime", element: "none",
+    physResist: 1, magicResist: 1, speed: 35,
+    statusResist: { poison: 0.9, paralysis: 0.9, sleep: 0.9, confuse: 0.9 },
+    spellIds: [],
+    dropTable: [{ materialId: "king_treasure", chance: 1.0 }],
+    isRare: true, goldOnly: true,
+  },
 ];
 
 export type ActiveEnemy = EnemyType & { uid: string; hp: number; floorHp: number; floorAtk: number };
@@ -443,10 +468,10 @@ export function advanceFloor(key: string = FLOOR_KEY): number {
   return next;
 }
 
-export function getFloorEnemyGroup(playerLevel: number, floor: number): ActiveEnemy[] {
+export function getFloorEnemyGroup(playerLevel: number, floor: number, opts?: { goldDungeon?: boolean }): ActiveEnemy[] {
   const isBoss = floor % 5 === 0;
-  const normalEnemies = ENEMIES.filter(e => !e.isRare);
-  const rareEnemies   = ENEMIES.filter(e => e.isRare);
+  const normalEnemies = ENEMIES.filter(e => !e.isRare && !e.goldOnly);
+  const rareEnemies   = ENEMIES.filter(e => e.isRare && (!e.goldOnly || opts?.goldDungeon));
 
   // 8%でレアモンスター単体（ボスフロアでは出現しない）
   if (!isBoss && rareEnemies.length > 0 && Math.random() < 0.08) {

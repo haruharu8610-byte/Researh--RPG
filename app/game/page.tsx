@@ -5,7 +5,10 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import GameCanvas, { type JobClass } from "@/components/GameCanvas";
 import JobClassSelector from "@/components/JobClassSelector";
-import { checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold, getLoginStreak } from "@/lib/gold";
+import {
+  checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold, getLoginStreak,
+  getGoldDungeonUsesLeft, consumeGoldDungeonUse,
+} from "@/lib/gold";
 import { getEquippedWeapon, getEquippedArmor, getEquipmentEffect } from "@/lib/equipment";
 import { calcPlayerStats, getFloor } from "@/lib/battle";
 import { syncPlayerState } from "@/lib/playerState";
@@ -38,6 +41,7 @@ export default function GamePage() {
   const [bonusMsg, setBonusMsg] = useState<string | null>(null);
   const [equippedWeaponId, setEquippedWeaponId] = useState<string | null>(null);
   const [equippedArmorId,  setEquippedArmorId]  = useState<string | null>(null);
+  const [goldDungeonUses, setGoldDungeonUses] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -45,7 +49,19 @@ export default function GamePage() {
     if (saved) setJobClass(saved);
     setEquippedWeaponId(getEquippedWeapon()?.id ?? null);
     setEquippedArmorId(getEquippedArmor()?.id ?? null);
+    setGoldDungeonUses(getGoldDungeonUsesLeft());
   }, []);
+
+  function handleGoldDungeonClick() {
+    if (getGoldDungeonUsesLeft() <= 0) {
+      setBonusMsg("本日のゴールドダンジョンの挑戦回数は使い切りました（毎日リセットされます）");
+      setTimeout(() => setBonusMsg(null), 4000);
+      return;
+    }
+    consumeGoldDungeonUse();
+    setGoldDungeonUses(getGoldDungeonUsesLeft());
+    router.push("/game/battle?mode=gold");
+  }
 
   function handleJobChange(j: JobClass) {
     setJobClass(j);
@@ -253,6 +269,14 @@ export default function GamePage() {
             className="rounded-xl border border-teal-600 bg-teal-950 py-3 text-sm font-bold text-teal-300 hover:bg-teal-900 transition-colors"
           >
             🪨 素材ダンジョン
+          </button>
+          <button
+            onClick={handleGoldDungeonClick}
+            disabled={goldDungeonUses <= 0}
+            className="rounded-xl border border-amber-500 bg-amber-950 py-3 text-sm font-bold text-amber-300 hover:bg-amber-900 disabled:opacity-40 transition-colors"
+          >
+            💰 ゴールドダンジョン
+            <div className="text-[10px] font-normal text-amber-400 mt-0.5">本日残り {goldDungeonUses} 回</div>
           </button>
           <button
             onClick={() => router.push("/game/gacha")}

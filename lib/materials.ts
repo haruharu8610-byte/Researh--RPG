@@ -8,6 +8,8 @@ export type Material = {
   description: string;
   buyable: boolean;
   cost?: number;
+  /** 換金専用アイテム：ショップで高額売却できる（使い道は売却のみ） */
+  sellValue?: number;
 };
 
 export const MATERIALS: Material[] = [
@@ -34,6 +36,9 @@ export const MATERIALS: Material[] = [
   { id: "legend_ore",    name: "でんせつの鉱石",   rarity: "legendary", description: "伝説の武具の素材。入手困難",       buyable: false  },
   { id: "dark_crystal",  name: "やみのクリスタル", rarity: "epic",      description: "闇の力を秘めた漆黒の結晶",         buyable: false  },
   { id: "angel_feather", name: "てんしのはね",     rarity: "legendary", description: "天界から落ちた羽根。神聖な力",     buyable: false  },
+  // 換金専用アイテム（ゴールドダンジョン限定モンスタードロップ）
+  { id: "gold_idol",     name: "おうごんのぞう",   rarity: "epic",      description: "ゴールドゴーレムが落とす黄金の像。換金専用", buyable: false, sellValue: 800  },
+  { id: "king_treasure", name: "おうのほうもつ",   rarity: "legendary", description: "王の財宝。とんでもない高値で売れる換金専用品", buyable: false, sellValue: 2500 },
 ];
 
 // ── クラフトレシピ ───────────────────────────────────────────

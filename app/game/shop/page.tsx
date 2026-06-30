@@ -8,8 +8,8 @@ import {
   SHOP_ITEMS, equip, addInventory, getEquippedWeapon, getEquippedArmor,
   getInventoryItem, addOwnedWeapon, addOwnedArmor, type ShopItem,
 } from "@/lib/equipment";
-import { MATERIALS, getMaterialQty, addMaterial } from "@/lib/materials";
-import { getGold, spendGold } from "@/lib/gold";
+import { MATERIALS, getMaterialQty, addMaterial, removeMaterial } from "@/lib/materials";
+import { getGold, spendGold, addGold } from "@/lib/gold";
 import { RARITY_LABEL, RARITY_COLOR, RARITY_BORDER } from "@/lib/rarity";
 
 type Tab = "weapon" | "armor" | "item" | "material";
@@ -56,10 +56,19 @@ export default function ShopPage() {
     showMsg(`${name}を1個買った！`);
   }
 
+  function handleSellMaterial(matId: string, name: string, sellValue: number) {
+    if (!removeMaterial(matId, 1)) return;
+    addGold(sellValue);
+    setGold(getGold());
+    setTick(t => t + 1);
+    showMsg(`${name}を${sellValue}Gで売却した！`);
+  }
+
   const shopItems = SHOP_ITEMS.filter(i =>
     !i.festivalOnly && (tab === "item" ? ["potion","ether","throwable"].includes(i.category) : i.category === tab)
   );
   const buyableMats = MATERIALS.filter(m => m.buyable);
+  const sellableMats = MATERIALS.filter(m => m.sellValue && getMaterialQty(m.id) > 0);
 
   function isEquipped(item: ShopItem) {
     if (item.category === "weapon") return equippedWeapon?.id === item.id;
@@ -153,6 +162,38 @@ export default function ShopPage() {
                 </div>
               );
             })}
+
+            {sellableMats.length > 0 && (
+              <>
+                <div className="text-xs font-bold text-amber-300 pt-2">💰 換金アイテム</div>
+                {sellableMats.map(mat => {
+                  const qty = getMaterialQty(mat.id);
+                  return (
+                    <div key={mat.id} className={`rounded-xl border p-3 ${RARITY_BORDER[mat.rarity]} bg-amber-950/20`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold ${RARITY_COLOR[mat.rarity]}`}>[{RARITY_LABEL[mat.rarity]}]</span>
+                            <span className="text-sm font-bold text-white">{mat.name}</span>
+                            <span className="text-xs text-gray-400">所持:{qty}</span>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">{mat.description}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-amber-400 font-bold text-sm">{mat.sellValue}G</div>
+                          <button
+                            onClick={() => handleSellMaterial(mat.id, mat.name, mat.sellValue!)}
+                            className="mt-1 rounded px-3 py-1 text-xs font-bold bg-amber-600 text-white hover:bg-amber-500 transition-all"
+                          >
+                            うる
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
 

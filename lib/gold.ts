@@ -48,15 +48,43 @@ export function checkLoginBonus(): number {
   return bonus;
 }
 
-/** タスク完了ボーナス。新たに完了したタスク1件につき15G。 */
+/** タスク完了ボーナス。新たに完了したタスク1件につき40G。 */
 export function checkTaskBonus(completedCount: number): number {
   const last = parseInt(localStorage.getItem(LAST_COMPLETED_KEY) ?? "0", 10);
   if (completedCount <= last) return 0;
   const diff = completedCount - last;
   localStorage.setItem(LAST_COMPLETED_KEY, String(completedCount));
-  const gold = diff * 15;
+  const gold = diff * 40;
   addGold(gold);
   return gold;
+}
+
+// ── ゴールドダンジョン：1日の挑戦回数制限 ──────────────────────
+const GOLD_DUNGEON_DATE_KEY  = "rpg_gold_dungeon_date";
+const GOLD_DUNGEON_USES_KEY  = "rpg_gold_dungeon_uses";
+export const GOLD_DUNGEON_DAILY_LIMIT = 3;
+
+function resetGoldDungeonIfNewDay(): void {
+  const today = new Date().toDateString();
+  if (localStorage.getItem(GOLD_DUNGEON_DATE_KEY) !== today) {
+    localStorage.setItem(GOLD_DUNGEON_DATE_KEY, today);
+    localStorage.setItem(GOLD_DUNGEON_USES_KEY, "0");
+  }
+}
+
+export function getGoldDungeonUsesLeft(): number {
+  resetGoldDungeonIfNewDay();
+  const used = parseInt(localStorage.getItem(GOLD_DUNGEON_USES_KEY) ?? "0", 10);
+  return Math.max(0, GOLD_DUNGEON_DAILY_LIMIT - used);
+}
+
+/** ゴールドダンジョンの挑戦回数を1消費する。残り0なら false を返す。 */
+export function consumeGoldDungeonUse(): boolean {
+  resetGoldDungeonIfNewDay();
+  const used = parseInt(localStorage.getItem(GOLD_DUNGEON_USES_KEY) ?? "0", 10);
+  if (used >= GOLD_DUNGEON_DAILY_LIMIT) return false;
+  localStorage.setItem(GOLD_DUNGEON_USES_KEY, String(used + 1));
+  return true;
 }
 
 const LAST_STUDY_MINUTES_KEY = "rpg_last_study_minutes";

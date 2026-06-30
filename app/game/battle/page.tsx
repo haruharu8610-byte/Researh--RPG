@@ -106,10 +106,12 @@ export default function BattlePage() {
 function BattlePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isMaterialMode = searchParams.get("mode") === "material";
-  const floorKey   = isMaterialMode ? "rpg_material_floor"     : "rpg_floor";
-  const victoryKey = isMaterialMode ? "rpg_material_victories" : VICTORY_KEY;
-  const dungeonLabel = isMaterialMode ? "🪨 素材ダンジョン" : "🗺️";
+  const modeParam = searchParams.get("mode");
+  const isMaterialMode = modeParam === "material";
+  const isGoldMode     = modeParam === "gold";
+  const floorKey   = isMaterialMode ? "rpg_material_floor" : isGoldMode ? "rpg_gold_floor" : "rpg_floor";
+  const victoryKey = isMaterialMode ? "rpg_material_victories" : isGoldMode ? "rpg_gold_victories" : VICTORY_KEY;
+  const dungeonLabel = isMaterialMode ? "🪨 素材ダンジョン" : isGoldMode ? "💰 ゴールドダンジョン" : "🗺️";
 
   // ── Display state ──────────────────────────────────────
   const [player, setPlayer]             = useState<PlayerStats | null>(null);
@@ -223,7 +225,7 @@ function BattlePageInner() {
   function checkVictory(updatedEnemies: ActiveEnemy[]): boolean {
     if (!updatedEnemies.every(e => e.hp <= 0)) return false;
     const nextFloor = advanceFloor(floorKey);
-    const goldMult = isMaterialMode ? 0.5 : 1;
+    const goldMult = isMaterialMode ? 0.5 : isGoldMode ? 3 : 1;
     const totalGold = Math.round(updatedEnemies.reduce((s, e) => s + e.goldReward, 0) * goldMult);
     addGold(totalGold);
     addInventory("potion", 1);
@@ -232,7 +234,7 @@ function BattlePageInner() {
     setVictories(newVic);
     localStorage.setItem(victoryKey, String(newVic));
     setFloor(nextFloor);
-    if (playerRef.current && !isMaterialMode) {
+    if (playerRef.current && !isMaterialMode && !isGoldMode) {
       syncPlayerState({
         level: playerRef.current.level, jobClass: playerRef.current.jobClass,
         weaponId: getEquippedWeapon()?.id ?? null, armorId: getEquippedArmor()?.id ?? null,
@@ -707,7 +709,7 @@ function BattlePageInner() {
 
       const currentFloor = getFloor(floorKey);
       const boss = currentFloor % 5 === 0;
-      const grp = getFloorEnemyGroup(level, currentFloor);
+      const grp = getFloorEnemyGroup(level, currentFloor, { goldDungeon: isGoldMode });
       const vic = parseInt(localStorage.getItem(victoryKey) ?? "0", 10);
       const availableSpells = getAvailableSpells(level, job);
 
