@@ -558,6 +558,14 @@ export function calcEnemySpellDamage(enemyMagic: number, spell: Spell): number {
   return Math.max(1, base + Math.floor(Math.random() * (v * 2 + 1)) - v);
 }
 
+// ── 会心の一撃 ──────────────────────────────────────────────
+export const CRIT_CHANCE = 0.12;
+export const CRIT_MULTIPLIER = 1.8;
+
+export function tryCritical(): boolean {
+  return Math.random() < CRIT_CHANCE;
+}
+
 /** 毒のターンダメージ（最大HPの6%、最低1） */
 export function calcPoisonDamage(maxHp: number): number {
   return Math.max(1, Math.round(maxHp * 0.06));

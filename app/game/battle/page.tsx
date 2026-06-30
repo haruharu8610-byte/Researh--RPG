@@ -9,7 +9,7 @@ import EnemySprite from "@/components/EnemySprite";
 import {
   getFloor, advanceFloor, getFloorEnemyGroup,
   calcPlayerStats, calcPhysicalDamage, calcMagicDamage, calcEnemySpellDamage,
-  calcPoisonDamage, getAvailableSpells, tryHit, getEffectiveness,
+  calcPoisonDamage, getAvailableSpells, tryHit, getEffectiveness, tryCritical, CRIT_MULTIPLIER,
   ELEMENT_LABEL, SPELLS, STATUS_LABEL, tryApplyStatus,
   type ActiveEnemy, type PlayerStats, type JobClass, type Spell,
   type ActiveStatus,
@@ -383,6 +383,7 @@ function BattlePageInner() {
 
   // ── Player turn ────────────────────────────────────────
   function handlePlayerTurn() {
+    if (playerHpRef.current <= 0) { advanceActor(); return; }
     const p = playerRef.current!;
     const status = playerStatusRef.current;
     const { skip, msgs, newStatus, dead } = processActorStatusStart(
@@ -944,8 +945,10 @@ function BattlePageInner() {
         msgs.push(confused ? "😵 混乱してこうげきがミス！" : "こうげき！　ミス！");
         pushCb(msgs, advanceActor); return;
       }
-      const dmg = calcPhysicalDamage(player.attack, aliveTarget.defense, aliveTarget.physResist);
+      const crit = tryCritical();
+      const dmg = Math.round(calcPhysicalDamage(player.attack, aliveTarget.defense, aliveTarget.physResist) * (crit ? CRIT_MULTIPLIER : 1));
       flashEnemy(aliveTarget.uid);
+      if (crit) msgs.push("💥会心の一撃！");
       msgs.push(`${aliveTarget.name}に${dmg}のダメージ！`);
       if (aliveTarget.physResist < 0.5) msgs.push("物理攻撃はあまり効かないようだ…");
       const eSt = enemyStatusesRef.current.get(aliveTarget.uid);
@@ -1028,8 +1031,9 @@ function BattlePageInner() {
         }
       } else {
         for (const t of targets) {
+          const crit = tryCritical();
           const rawDmg = calcMagicDamage(player.magic, spell, t.element, t.magicResist);
-          const dmg = Math.round(rawDmg * player.craftEffect.spellMultiplier);
+          const dmg = Math.round(rawDmg * player.craftEffect.spellMultiplier * (crit ? CRIT_MULTIPLIER : 1));
           flashEnemy(t.uid);
           updated = updated.map(e => e.uid === t.uid ? { ...e, hp: Math.max(0, e.hp - dmg) } : e);
           const eff = (() => {
@@ -1039,6 +1043,7 @@ function BattlePageInner() {
             if (e2 <= 0.6) return "　こうかはいまひとつ…";
             return "";
           })();
+          if (crit) msgs.push("💥会心の一撃！");
           msgs.push(`${spell.name}！ ${t.name}に${dmg}ダメージ！${eff}`);
         }
       }
