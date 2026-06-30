@@ -71,6 +71,16 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "storm_lance",   name: "ストームランス",   category: "weapon", cost: 2300, description: "嵐を呼ぶ大槍",             attackBonus: 48, magicBonus: 12, rarity: "epic", element: "wind", series: "storm" },
   { id: "inferno_axe",   name: "インフェルノアックス", category: "weapon", cost: 2350, description: "業火を纏う巨大な斧",   attackBonus: 52, rarity: "epic", element: "fire", series: "inferno" },
   { id: "blessed_mace",  name: "ブレスメイス",     category: "weapon", cost: 1400, description: "祝福を受けたメイス",       attackBonus: 25, magicBonus: 20, rarity: "rare"    },
+  { id: "ice_rapier",    name: "アイスレイピア",   category: "weapon", cost: 1450, description: "氷を纏う細剣",             attackBonus: 30, magicBonus: 8, rarity: "rare", element: "water" },
+  { id: "thorn_whip",    name: "ソーンウィップ",   category: "weapon", cost: 1350, description: "棘を持つ大地の鞭",         attackBonus: 28, magicBonus: 6, rarity: "rare", element: "earth" },
+  { id: "crescent_blade",name: "クレセントブレード", category: "weapon", cost: 1500, description: "三日月形の風斬り刀",     attackBonus: 32, rarity: "rare", element: "wind" },
+  { id: "obsidian_mace", name: "オブシディアンメイス", category: "weapon", cost: 1550, description: "黒曜石の重い炎メイス", attackBonus: 33, rarity: "rare", element: "fire" },
+  { id: "silver_bow",    name: "シルバーボウ",     category: "weapon", cost: 1400, description: "銀細工の精巧な弓",         attackBonus: 29, magicBonus: 5, rarity: "rare"    },
+  { id: "tempest_blade", name: "テンペストブレード", category: "weapon", cost: 2450, description: "嵐を切り裂く魔剣",       attackBonus: 55, magicBonus: 10, rarity: "epic", element: "wind" },
+  { id: "abyss_trident", name: "アビストライデント", category: "weapon", cost: 2500, description: "深淵より来たる三叉槍",   attackBonus: 50, magicBonus: 18, rarity: "epic", element: "water" },
+  { id: "solar_glaive",  name: "ソーラーグレイブ", category: "weapon", cost: 2600, description: "太陽の炎を纏う大薙刀",     attackBonus: 58, rarity: "epic", element: "fire" },
+  { id: "terra_hammer",  name: "テラハンマー",     category: "weapon", cost: 2650, description: "大地を砕く巨大な鎚",       attackBonus: 60, rarity: "epic", element: "earth" },
+  { id: "shadow_rapier", name: "シャドウレイピア", category: "weapon", cost: 2400, description: "闇に溶け込む漆黒の細剣",   attackBonus: 52, magicBonus: 14, rarity: "epic"    },
 
   // ── 防具 ───────────────────────────────────────────────────
   { id: "cloth_robe",    name: "ぬののローブ",     category: "armor",  cost: 80,   description: "簡素な布のローブ",                 defenseBonus: 3,  statusResist: 0.05, rarity: "common"   },
@@ -101,6 +111,16 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "storm_plate",   name: "ストームプレート", category: "armor",  cost: 2250, description: "嵐の加護を受けた鎧",               defenseBonus: 42, statusResist: 0.28, rarity: "epic", series: "storm"   },
   { id: "inferno_guard", name: "インフェルノガード", category: "armor", cost: 2300, description: "業火を防ぐ重装鎧",                 defenseBonus: 48, statusResist: 0.25, rarity: "epic", series: "inferno" },
   { id: "swift_vest",    name: "スウィフトベスト", category: "armor",  cost: 1350, description: "軽量で動きやすい胴衣",             defenseBonus: 16, statusResist: 0.18, rarity: "rare"    },
+  { id: "ranger_cloak",  name: "レンジャークローク", category: "armor", cost: 1300, description: "森を駆ける狩人のマント",           defenseBonus: 20, statusResist: 0.18, rarity: "rare"    },
+  { id: "crystal_vest",  name: "クリスタルベスト", category: "armor",  cost: 1450, description: "水晶片を編み込んだ胴衣",           defenseBonus: 22, magicBonus: 10, rarity: "rare"    },
+  { id: "iron_bulwark",  name: "アイアンバルワーク", category: "armor", cost: 1500, description: "鉄壁の大盾鎧",                   defenseBonus: 28, rarity: "rare"    },
+  { id: "mystic_sash",   name: "ミスティックサッシュ", category: "armor", cost: 1400, description: "魔力を秘めた帯状の防具",       defenseBonus: 16, magicBonus: 16, statusResist: 0.20, rarity: "rare"    },
+  { id: "scout_leather", name: "スカウトレザー",   category: "armor",  cost: 1250, description: "斥候用の柔らかい革鎧",             defenseBonus: 18, statusResist: 0.15, rarity: "rare"    },
+  { id: "titan_plate",   name: "タイタンプレート", category: "armor",  cost: 2550, description: "巨人の力を宿す重装鎧",             defenseBonus: 55, rarity: "epic"    },
+  { id: "arcane_vestment", name: "アーケインヴェスト", category: "armor", cost: 2600, description: "古代魔術師の法衣",             defenseBonus: 35, magicBonus: 35, rarity: "epic"    },
+  { id: "phantom_mantle", name: "ファントムマント", category: "armor", cost: 2500, description: "幻影をまとう不思議なマント",       defenseBonus: 38, statusResist: 0.35, rarity: "epic"    },
+  { id: "dragoon_armor", name: "ドラグーンアーマー", category: "armor", cost: 2650, description: "竜騎兵の象徴たる鎧",             defenseBonus: 50, statusResist: 0.25, rarity: "epic"    },
+  { id: "celestial_robe", name: "セレスティアルローブ", category: "armor", cost: 2700, description: "天空の加護を受けたローブ",     defenseBonus: 40, magicBonus: 30, statusResist: 0.30, rarity: "epic"    },
 
   // ── 消耗品（HP） ───────────────────────────────────────────
   { id: "potion",        name: "ポーション",       category: "potion", cost: 30,   description: "HPを40回復",    hpRestore: 40,  rarity: "common"   },

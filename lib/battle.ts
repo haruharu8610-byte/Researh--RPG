@@ -324,6 +324,15 @@ export const ENEMIES: EnemyType[] = [
     dropTable: [{ materialId: "golem_core", chance: 0.30 }, { materialId: "iron_ore", chance: 0.80 }],
   },
   {
+    id: "crystal_golem", name: "クリスタルゴーレム", maxHp: 85, attack: 25, defense: 18, magic: 12,
+    expReward: 70, goldReward: 85, minLevel: 7,
+    color: 0x67e8f9, shape: "golem", element: "water",
+    physResist: 0.6, magicResist: 0.7, speed: 6,
+    statusResist: { poison: 1.0, paralysis: 0.8, sleep: 0.9, confuse: 0.6 },
+    spellIds: ["hyado"],
+    dropTable: [{ materialId: "crystal_shard", chance: 0.55 }, { materialId: "rare_crystal", chance: 0.10 }],
+  },
+  {
     id: "dark_mage", name: "まじゅつし", maxHp: 50, attack: 8, defense: 6, magic: 35,
     expReward: 60, goldReward: 75, minLevel: 6,
     color: 0x6d28d9, shape: "mage", element: "none",
