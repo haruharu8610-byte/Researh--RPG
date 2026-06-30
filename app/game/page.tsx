@@ -7,7 +7,8 @@ import GameCanvas, { type JobClass } from "@/components/GameCanvas";
 import JobClassSelector from "@/components/JobClassSelector";
 import { checkLoginBonus, checkTaskBonus, checkStudyBonus, getGold } from "@/lib/gold";
 import { getEquippedWeapon, getEquippedArmor, getEquipmentEffect } from "@/lib/equipment";
-import { calcPlayerStats } from "@/lib/battle";
+import { calcPlayerStats, getFloor } from "@/lib/battle";
+import { syncPlayerState } from "@/lib/playerState";
 
 type Stats = {
   totalTasks: number;
@@ -50,6 +51,17 @@ export default function GamePage() {
     localStorage.setItem(JOB_KEY, j);
     setShowJobSelect(false);
   }
+
+  // ランキング用に自分の状態をサーバーへ同期
+  useEffect(() => {
+    if (!stats) return;
+    const level = calcLevel(totalPoints(stats));
+    syncPlayerState({
+      level, jobClass,
+      weaponId: equippedWeaponId, armorId: equippedArmorId,
+      floor: getFloor(),
+    });
+  }, [stats, jobClass, equippedWeaponId, equippedArmorId]);
 
   const fetchStats = useCallback(async (token: string) => {
     const res = await fetch(process.env.NEXT_PUBLIC_STATS_API_URL!, {
@@ -230,6 +242,12 @@ export default function GamePage() {
             className="rounded-xl border border-orange-600 bg-orange-950 py-3 text-sm font-bold text-orange-300 hover:bg-orange-900 transition-colors"
           >
             🔨 クラフト
+          </button>
+          <button
+            onClick={() => router.push("/game/ranking")}
+            className="col-span-2 rounded-xl border border-pink-600 bg-pink-950 py-3 text-sm font-bold text-pink-300 hover:bg-pink-900 transition-colors"
+          >
+            🏆 リアルタイムランキング
           </button>
         </div>
 

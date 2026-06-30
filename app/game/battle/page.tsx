@@ -22,6 +22,7 @@ import { addGold } from "@/lib/gold";
 import { getParty, type PartyMemberData } from "@/lib/party";
 import { MATERIALS, addMaterial } from "@/lib/materials";
 import { RARITY_COLOR, RARITY_LABEL } from "@/lib/rarity";
+import { syncPlayerState } from "@/lib/playerState";
 
 const CRAFTED_KEY = "rpg_crafted_list";
 function getCraftedIds(): string[] {
@@ -215,6 +216,13 @@ export default function BattlePage() {
     setVictories(newVic);
     localStorage.setItem(VICTORY_KEY, String(newVic));
     setFloor(nextFloor);
+    if (playerRef.current) {
+      syncPlayerState({
+        level: playerRef.current.level, jobClass: playerRef.current.jobClass,
+        weaponId: getEquippedWeapon()?.id ?? null, armorId: getEquippedArmor()?.id ?? null,
+        floor: nextFloor,
+      });
+    }
 
     // ドロップ処理
     const dropMsgs: string[] = [];
