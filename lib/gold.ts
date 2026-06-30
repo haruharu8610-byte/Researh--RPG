@@ -48,13 +48,13 @@ export function checkLoginBonus(): number {
   return bonus;
 }
 
-/** タスク完了ボーナス。新たに完了したタスク1件につき40G。 */
+/** タスク完了ボーナス。新たに完了したタスク1件につき300G。 */
 export function checkTaskBonus(completedCount: number): number {
   const last = parseInt(localStorage.getItem(LAST_COMPLETED_KEY) ?? "0", 10);
   if (completedCount <= last) return 0;
   const diff = completedCount - last;
   localStorage.setItem(LAST_COMPLETED_KEY, String(completedCount));
-  const gold = diff * 40;
+  const gold = diff * 300;
   addGold(gold);
   return gold;
 }
