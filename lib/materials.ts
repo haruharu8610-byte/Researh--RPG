@@ -499,3 +499,43 @@ export function removeMaterial(id: string, qty = 1): boolean {
 export function canCraft(recipe: CraftRecipe): boolean {
   return recipe.materials.every(m => getMaterialQty(m.id) >= m.qty);
 }
+
+// ── 素材交換所：低レア素材を集めて上位レアの素材と交換 ────────
+export const EXCHANGE_COST = 5;
+
+const RARITY_TIER_UP: Record<Rarity, Rarity | null> = {
+  common: "uncommon",
+  uncommon: "rare",
+  rare: "epic",
+  epic: "legendary",
+  legendary: null,
+};
+
+export function getNextRarity(rarity: Rarity): Rarity | null {
+  return RARITY_TIER_UP[rarity];
+}
+
+/** 交換対象になりうる素材（換金専用アイテムは除く） */
+export function getExchangeableMaterials(rarity: Rarity): Material[] {
+  return MATERIALS.filter(m => m.rarity === rarity && !m.sellValue);
+}
+
+export type ExchangeResult = { success: boolean; gained?: Material; reason?: string };
+
+/** 同じ素材をEXCHANGE_COST個消費し、1段階上のレアリティの素材とランダムに交換する */
+export function exchangeMaterial(materialId: string): ExchangeResult {
+  const material = MATERIALS.find(m => m.id === materialId);
+  if (!material) return { success: false, reason: "素材が見つかりません" };
+  if (material.sellValue) return { success: false, reason: "この素材は交換できません" };
+  const nextRarity = getNextRarity(material.rarity);
+  if (!nextRarity) return { success: false, reason: "これ以上交換できません" };
+  if (getMaterialQty(materialId) < EXCHANGE_COST) return { success: false, reason: "素材が足りません" };
+
+  const candidates = getExchangeableMaterials(nextRarity);
+  if (!candidates.length) return { success: false, reason: "交換先の素材がありません" };
+
+  removeMaterial(materialId, EXCHANGE_COST);
+  const gained = candidates[Math.floor(Math.random() * candidates.length)];
+  addMaterial(gained.id, 1);
+  return { success: true, gained };
+}

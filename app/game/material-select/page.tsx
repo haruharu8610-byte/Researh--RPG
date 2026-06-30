@@ -30,14 +30,14 @@ export default function MaterialSelectPage() {
         </div>
 
         <p className="text-xs text-gray-500">
-          倒したことのある敵（レアモンスターを除く）だけを選んで出現させられます。選ばずに入るとランダムで出現します。
+          倒したことのある敵（レアモンスターを除く）だけを選んで出現させられます。「ランダムで挑む」を選ぶと、まだ倒したことのない敵が優先的に出現します（すべて倒した後は通常通りランダムです）。
         </p>
 
         <button
           onClick={() => enter()}
           className="w-full rounded-xl border-2 border-teal-600 bg-teal-950 py-3 text-sm font-bold text-teal-300 hover:bg-teal-900 transition-colors"
         >
-          🎲 ランダムで挑む
+          🎲 ランダムで挑む（未討伐優先）
         </button>
 
         {selectable.length === 0 ? (

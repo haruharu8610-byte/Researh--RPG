@@ -553,7 +553,7 @@ export function advanceFloor(key: string = FLOOR_KEY): number {
 
 export function getFloorEnemyGroup(
   playerLevel: number, floor: number,
-  opts?: { goldDungeon?: boolean; forcedEnemyId?: string },
+  opts?: { goldDungeon?: boolean; forcedEnemyId?: string; excludeIds?: string[] },
 ): ActiveEnemy[] {
   const isBoss = floor % 5 === 0;
   const normalEnemies = ENEMIES.filter(e => !e.isRare && !e.goldOnly);
@@ -581,7 +581,12 @@ export function getFloorEnemyGroup(
     return [{ ...base, uid: `${base.id}-0`, hp, floorHp: hp, floorAtk: base.attack }];
   }
 
-  const pool = normalEnemies.filter(e => e.minLevel <= Math.max(1, playerLevel + Math.floor(floor / 4)));
+  let pool = normalEnemies.filter(e => e.minLevel <= Math.max(1, playerLevel + Math.floor(floor / 4)));
+  // 未討伐の敵を優先（excludeIds指定時）。全滅していたら通常通り全プールから出す
+  if (opts?.excludeIds?.length && !isBoss) {
+    const undiscovered = pool.filter(e => !opts.excludeIds!.includes(e.id));
+    if (undiscovered.length) pool = undiscovered;
+  }
   const base = isBoss ? pool[pool.length - 1] : pool[Math.floor(Math.random() * pool.length)];
   const count = isBoss ? 1 : Math.floor(Math.random() * 3) + 1;
   const hpMult  = 1 + (floor - 1) * 0.18 + (isBoss ? 1 : 0);

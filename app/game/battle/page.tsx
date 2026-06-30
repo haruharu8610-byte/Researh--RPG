@@ -24,7 +24,7 @@ import { getParty, type PartyMemberData } from "@/lib/party";
 import { MATERIALS, addMaterial } from "@/lib/materials";
 import { RARITY_COLOR, RARITY_LABEL, DEFAULT_CRAFT_EFFECT } from "@/lib/rarity";
 import { syncPlayerState } from "@/lib/playerState";
-import { recordDefeatedEnemy } from "@/lib/bestiary";
+import { recordDefeatedEnemy, getDefeatedEnemyIds } from "@/lib/bestiary";
 
 const CRAFTED_KEY = "rpg_crafted_list";
 function getCraftedIds(): string[] {
@@ -696,7 +696,9 @@ function BattlePageInner() {
 
       const currentFloor = isFlatDungeon ? 1 : getFloor(floorKey);
       const boss = !isFlatDungeon && currentFloor % 5 === 0;
-      const grp = getFloorEnemyGroup(level, currentFloor, { goldDungeon: isGoldMode, forcedEnemyId });
+      // 素材ダンジョンをランダムで選んだ場合は、まだ倒したことのない敵を優先的に出現させる
+      const excludeIds = isMaterialMode && !forcedEnemyId ? getDefeatedEnemyIds() : undefined;
+      const grp = getFloorEnemyGroup(level, currentFloor, { goldDungeon: isGoldMode, forcedEnemyId, excludeIds });
       const vic = parseInt(localStorage.getItem(victoryKey) ?? "0", 10);
       const availableSpells = getAvailableSpells(level, job);
 

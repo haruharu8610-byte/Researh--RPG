@@ -8,7 +8,10 @@ import {
   SHOP_ITEMS, equip, addInventory, getEquippedWeapon, getEquippedArmor,
   getInventoryItem, addOwnedWeapon, addOwnedArmor, type ShopItem,
 } from "@/lib/equipment";
-import { MATERIALS, getMaterialQty, addMaterial, removeMaterial } from "@/lib/materials";
+import {
+  MATERIALS, getMaterialQty, addMaterial, removeMaterial,
+  EXCHANGE_COST, getNextRarity, exchangeMaterial,
+} from "@/lib/materials";
 import { getGold, spendGold, addGold } from "@/lib/gold";
 import { RARITY_LABEL, RARITY_COLOR, RARITY_BORDER } from "@/lib/rarity";
 
@@ -64,11 +67,19 @@ export default function ShopPage() {
     showMsg(`${name}を${sellValue}Gで売却した！`);
   }
 
+  function handleExchange(matId: string, name: string) {
+    const result = exchangeMaterial(matId);
+    setTick(t => t + 1);
+    if (!result.success) { showMsg(result.reason ?? "交換できません"); return; }
+    showMsg(`${name}を${EXCHANGE_COST}個使って[${RARITY_LABEL[result.gained!.rarity]}]${result.gained!.name}と交換した！`);
+  }
+
   const shopItems = SHOP_ITEMS.filter(i =>
     !i.festivalOnly && (tab === "item" ? ["potion","ether","throwable"].includes(i.category) : i.category === tab)
   );
   const buyableMats = MATERIALS.filter(m => m.buyable);
   const sellableMats = MATERIALS.filter(m => m.sellValue && getMaterialQty(m.id) > 0);
+  const exchangeableMats = MATERIALS.filter(m => !m.sellValue && getNextRarity(m.rarity) && getMaterialQty(m.id) > 0);
 
   function isEquipped(item: ShopItem) {
     if (item.category === "weapon") return equippedWeapon?.id === item.id;
@@ -188,6 +199,42 @@ export default function ShopPage() {
                             うる
                           </button>
                         </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {exchangeableMats.length > 0 && (
+              <>
+                <div className="text-xs font-bold text-cyan-300 pt-2">🔄 素材交換所（同じ素材{EXCHANGE_COST}個→上位レアの素材1個とランダム交換）</div>
+                {exchangeableMats.map(mat => {
+                  const qty = getMaterialQty(mat.id);
+                  const nextRarity = getNextRarity(mat.rarity)!;
+                  const canExchange = qty >= EXCHANGE_COST;
+                  return (
+                    <div key={mat.id} className={`rounded-xl border p-3 ${RARITY_BORDER[mat.rarity]} bg-cyan-950/20`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold ${RARITY_COLOR[mat.rarity]}`}>[{RARITY_LABEL[mat.rarity]}]</span>
+                            <span className="text-sm font-bold text-white">{mat.name}</span>
+                            <span className="text-xs text-gray-400">所持:{qty}</span>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {EXCHANGE_COST}個 → <span className={RARITY_COLOR[nextRarity]}>[{RARITY_LABEL[nextRarity]}]</span>素材1個
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleExchange(mat.id, mat.name)}
+                          disabled={!canExchange}
+                          className={`rounded px-3 py-1 text-xs font-bold transition-all ${
+                            canExchange ? "bg-cyan-600 text-white hover:bg-cyan-500" : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          こうかん
+                        </button>
                       </div>
                     </div>
                   );
