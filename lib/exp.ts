@@ -15,7 +15,7 @@ export function addBattleExp(amount: number): number {
   return next;
 }
 
-/** タスク達成ポイント・自習時間・バトルEXPを合算した総ポイント（レベル算出に使用） */
+/** タスク達成ポイント・自習時間を合算した総ポイント（レベル算出に使用）。バトルEXPは含まない。 */
 export function calcTotalPoints(stats: { totalPoints?: number; studyTotalMinutes?: number }): number {
-  return (stats.totalPoints ?? 0) + (stats.studyTotalMinutes ?? 0) * STUDY_EXP_PER_MINUTE + getBattleExp();
+  return (stats.totalPoints ?? 0) + (stats.studyTotalMinutes ?? 0) * STUDY_EXP_PER_MINUTE;
 }

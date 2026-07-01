@@ -25,7 +25,7 @@ import { MATERIALS, addMaterial } from "@/lib/materials";
 import { RARITY_COLOR, RARITY_LABEL, DEFAULT_CRAFT_EFFECT } from "@/lib/rarity";
 import { syncPlayerState } from "@/lib/playerState";
 import { recordDefeatedEnemy, getDefeatedEnemyIds } from "@/lib/bestiary";
-import { calcTotalPoints, addBattleExp } from "@/lib/exp";
+import { calcTotalPoints } from "@/lib/exp";
 import { calcLevel } from "@/lib/level";
 
 const CRAFTED_KEY = "rpg_crafted_list";
@@ -266,9 +266,6 @@ function BattlePageInner() {
     const goldMult = isMaterialMode ? 0.5 : isGoldMode ? 3 : 1;
     const totalGold = Math.round(updatedEnemies.reduce((s, e) => s + e.goldReward, 0) * goldMult);
     addGold(totalGold);
-    const expMult = isStudyMode ? 2 : 1;
-    const totalExp = Math.round(updatedEnemies.reduce((s, e) => s + e.expReward, 0) * expMult);
-    addBattleExp(totalExp);
     addInventory("potion", 1);
     const newVic = victoriesRef.current + 1;
     victoriesRef.current = newVic;
@@ -298,7 +295,7 @@ function BattlePageInner() {
 
     pushMessages([
       `てきをたおした！`,
-      `${totalGold}Gと${totalExp}EXPてにいれた！`,
+      `${totalGold}Gてにいれた！`,
       ...dropMsgs,
       `ポーション1個もらった！`,
       ...(isFlatDungeon ? [] : [`${nextFloor}階へ進む…`]),
