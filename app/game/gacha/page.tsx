@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  pullGachaSession, GACHA_COST, GACHA_KIND_LABEL, isFestivalActive, getRarityRates, getGachaPool,
+  pullGachaSession, GACHA_COST, GACHA_KIND_LABEL, PITY_LIMIT, getPityCount, isFestivalActive, getRarityRates, getGachaPool,
   type GachaKind, type GachaResult,
 } from "@/lib/gacha";
 import { getGold, spendGold } from "@/lib/gold";
@@ -26,8 +26,14 @@ export default function GachaPage() {
   const [message, setMessage] = useState("");
   const [showPool, setShowPool] = useState(false);
   const [festival, setFestival] = useState(false);
+  const [pityCount, setPityCountState] = useState(0);
+  const [pityActivated, setPityActivated] = useState(false);
 
-  useEffect(() => { setGold(getGold()); setFestival(isFestivalActive()); }, []);
+  useEffect(() => {
+    setGold(getGold());
+    setFestival(isFestivalActive());
+    setPityCountState(getPityCount(tab));
+  }, [tab]);
 
   function showMsg(msg: string) {
     setMessage(msg); setTimeout(() => setMessage(""), 3000);
@@ -53,14 +59,16 @@ export default function GachaPage() {
 
     const session = pullGachaSession(tab, times);
     setSpinGuaranteed(session.guaranteed);
+    setPityActivated(session.pityActivated);
     setPhase("spinning");
     setRevealed([]); setVisibleCount(0);
 
-    const spinDuration = session.guaranteed ? 2000 : 1100;
+    const spinDuration = (session.guaranteed || session.pityActivated) ? 2000 : 1100;
     setTimeout(() => {
       const msgs = session.results.map(applyResult);
       setRevealed(session.results);
       setPhase("result");
+      setPityCountState(session.pityCount);
       session.results.forEach((_, i) => {
         setTimeout(() => setVisibleCount(c => Math.max(c, i + 1)), i * 220);
       });
@@ -107,6 +115,22 @@ export default function GachaPage() {
           がランダムで手に入ります。1回{GACHA_COST[tab]}G。低確率で確定演出が発生すると最高レアリティが1つ確定。10連はエピック以上1つ以上保証。
         </p>
 
+        {/* 天井カウンター */}
+        <div className="rounded-lg border border-gray-700 bg-gray-900 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs text-gray-400">🔮 天井まで</span>
+          <div className="flex items-center gap-2">
+            <div className="w-32 h-2 rounded-full bg-gray-800">
+              <div
+                className={`h-2 rounded-full transition-all duration-500 ${pityCount >= PITY_LIMIT * 0.8 ? "bg-red-500" : pityCount >= PITY_LIMIT * 0.5 ? "bg-yellow-500" : "bg-indigo-500"}`}
+                style={{ width: `${(pityCount / PITY_LIMIT) * 100}%` }}
+              />
+            </div>
+            <span className={`text-xs font-bold ${pityCount >= PITY_LIMIT * 0.8 ? "text-red-400" : "text-gray-300"}`}>
+              {pityCount} / {PITY_LIMIT}連
+            </span>
+          </div>
+        </div>
+
         {tab !== "item" && (
           <button
             onClick={() => router.push("/game/equipment")}
@@ -124,7 +148,17 @@ export default function GachaPage() {
 
         {/* ガチャ演出 */}
         <div className="relative rounded-xl border-2 border-fuchsia-800 bg-gray-900 p-6 flex items-center justify-center min-h-[120px] overflow-hidden">
-          {phase === "spinning" && spinGuaranteed && (
+          {phase === "spinning" && pityActivated && (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/40 via-fuchsia-500/30 to-yellow-400/40 animate-pulse" />
+              <div className="text-center">
+                <div className="text-5xl animate-gacha-shake">👑</div>
+                <p className="mt-2 text-sm font-bold text-yellow-200 animate-pulse">🎉 天井到達！ 🎉</p>
+                <p className="text-[10px] text-yellow-100">レジェンド確定！！</p>
+              </div>
+            </>
+          )}
+          {phase === "spinning" && !pityActivated && spinGuaranteed && (
             <>
               <div className="absolute inset-0 bg-yellow-400/30 animate-pulse" />
               <div className="text-center">
@@ -156,7 +190,10 @@ export default function GachaPage() {
                       key={i}
                       className={`relative animate-gacha-card-in rounded-lg border-2 px-3 py-2 text-center w-[100px] ${RARITY_BORDER[r.ref.rarity!]} ${RARITY_BG[r.ref.rarity!]} ${fx}`}
                     >
-                      {r.forced && (
+                      {r.forced && r.ref.rarity === "legendary" && pityActivated && (
+                        <span className="absolute -top-2 -left-2 text-[9px] font-bold bg-fuchsia-400 text-gray-900 rounded px-1">天井</span>
+                      )}
+                      {r.forced && !(r.ref.rarity === "legendary" && pityActivated) && (
                         <span className="absolute -top-2 -left-2 text-[9px] font-bold bg-yellow-400 text-gray-900 rounded px-1">確定</span>
                       )}
                       <div className={`text-[10px] font-bold ${RARITY_COLOR[r.ref.rarity!]}`}>{RARITY_LABEL[r.ref.rarity!]}</div>

@@ -28,6 +28,10 @@ export type GachaSession = {
   /** 確定演出が発生したか（最高レアリティを1つ保証） */
   guaranteed: boolean;
   festival: boolean;
+  /** 天井（100連）が発動したか */
+  pityActivated: boolean;
+  /** このセッション後の天井カウンター */
+  pityCount: number;
 };
 
 const RARITY_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
@@ -52,6 +56,20 @@ const RARITY_WEIGHTS_FESTIVAL: Array<{ rarity: Rarity; weight: number }> = [
 /** 確定演出（最高レアリティ保証）が出る確率 */
 const GUARANTEED_EVENT_CHANCE = 0.03;
 const GUARANTEED_EVENT_CHANCE_FESTIVAL = 0.06;
+
+// ── 天井システム ─────────────────────────────────────────────────
+export const PITY_LIMIT = 100;
+
+function pityKey(kind: GachaKind): string { return `rpg_gacha_pity_${kind}`; }
+
+export function getPityCount(kind: GachaKind): number {
+  if (typeof window === "undefined") return 0;
+  return parseInt(localStorage.getItem(pityKey(kind)) ?? "0", 10);
+}
+
+function setPityCount(kind: GachaKind, n: number): void {
+  localStorage.setItem(pityKey(kind), String(n));
+}
 
 const consumablePool = SHOP_ITEMS.filter(i => ["potion", "ether", "throwable"].includes(i.category));
 const weaponPool     = SHOP_ITEMS.filter(i => i.category === "weapon");
@@ -123,16 +141,45 @@ export function pullGacha(kind: GachaKind): GachaResult {
  * 複数回ガチャを引くセッション。
  * - 低確率で「確定演出」が発生し、そのガチャ種別の最高レアリティを1つ保証（フェス中は発生率UP）
  * - 10連以上の場合、エピック以上が1つも無ければ1枠を強制的にエピック以上に差し替え
+ * - 累計100連に達すると天井発動：レジェンド確定、カウンターリセット
+ * - レジェンドが出るとカウンターリセット
  */
 export function pullGachaSession(kind: GachaKind, times: number): GachaSession {
   const festival = isFestivalActive();
-  const results: GachaResult[] = Array.from({ length: times }, () => drawOne(kind));
 
+  // 天井カウンターを1連ずつ処理
+  let pity = getPityCount(kind);
+  let pityActivated = false;
+  const results: GachaResult[] = [];
+
+  for (let i = 0; i < times; i++) {
+    pity++;
+    let result: GachaResult;
+    if (pity >= PITY_LIMIT) {
+      // 天井発動：レジェンド強制
+      result = drawAtRarity(kind, "legendary", true);
+      pity = 0;
+      pityActivated = true;
+    } else {
+      result = drawOne(kind);
+      // レジェンドが出たらカウンターリセット
+      if (result.ref.rarity === "legendary") pity = 0;
+    }
+    results.push(result);
+  }
+  setPityCount(kind, pity);
+
+  // 確定演出（天井とは別の既存システム）
   const guaranteedChance = festival ? GUARANTEED_EVENT_CHANCE_FESTIVAL : GUARANTEED_EVENT_CHANCE;
-  const guaranteed = Math.random() < guaranteedChance;
+  const guaranteed = !pityActivated && Math.random() < guaranteedChance;
   if (guaranteed) {
     const idx = Math.floor(Math.random() * times);
-    results[idx] = drawAtRarity(kind, highestAvailableRarity(kind), true);
+    const prev = results[idx];
+    if (prev.ref.rarity !== "legendary") {
+      results[idx] = drawAtRarity(kind, highestAvailableRarity(kind), true);
+      // 確定演出でレジェンドが出た場合もリセット
+      if (results[idx].ref.rarity === "legendary") setPityCount(kind, 0);
+    }
   }
 
   if (times >= 10) {
@@ -143,7 +190,7 @@ export function pullGachaSession(kind: GachaKind, times: number): GachaSession {
     }
   }
 
-  return { results, guaranteed, festival };
+  return { results, guaranteed, festival, pityActivated, pityCount: getPityCount(kind) };
 }
 
 // ── 排出率・排出一覧表示用 ─────────────────────────────────────
