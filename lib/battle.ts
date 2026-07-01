@@ -210,6 +210,7 @@ export type EnemyType = {
   dropTable: DropEntry[];
   isRare?: boolean; // レアモンスターフラグ
   goldOnly?: boolean; // ゴールドダンジョンでのみ出現するレアモンスター
+  studyOnly?: boolean; // 学習ダンジョンでのみ出現する高EXPモンスター
 };
 
 export const ENEMIES: EnemyType[] = [
@@ -536,6 +537,63 @@ export const ENEMIES: EnemyType[] = [
     dropTable: [{ materialId: "king_treasure", chance: 1.0 }],
     isRare: true, goldOnly: true,
   },
+
+  // ── 学習ダンジョン限定（高EXP・知識系モンスター）──────────────
+  {
+    id: "study_wisp", name: "ちしきのウィスプ",
+    maxHp: 40, attack: 12, defense: 6, magic: 18,
+    expReward: 300, goldReward: 10, minLevel: 1,
+    color: 0x7dd3fc, shape: "ghost", element: "wind",
+    physResist: 0.5, magicResist: 0.2, speed: 22,
+    statusResist: { poison: 0.6, paralysis: 0.4, sleep: 0.3, confuse: 0.3 },
+    spellIds: ["mera"],
+    dropTable: [],
+    studyOnly: true,
+  },
+  {
+    id: "study_golem", name: "ほんのゴーレム",
+    maxHp: 90, attack: 20, defense: 20, magic: 10,
+    expReward: 600, goldReward: 10, minLevel: 1,
+    color: 0xd8b4fe, shape: "golem", element: "earth",
+    physResist: 0.2, magicResist: 0.2, speed: 8,
+    statusResist: { poison: 0.7, paralysis: 0.7, sleep: 0.7, confuse: 0.7 },
+    spellIds: [],
+    dropTable: [],
+    studyOnly: true,
+  },
+  {
+    id: "study_mage", name: "けんきゅうしゃのぼうれい",
+    maxHp: 60, attack: 14, defense: 8, magic: 30,
+    expReward: 1000, goldReward: 10, minLevel: 1,
+    color: 0xa78bfa, shape: "mage", element: "none",
+    physResist: 0.3, magicResist: 0.1, speed: 18,
+    statusResist: { poison: 0.5, paralysis: 0.3, sleep: 0.2, confuse: 0.2 },
+    spellIds: ["gira", "mera"],
+    dropTable: [],
+    studyOnly: true,
+  },
+  {
+    id: "study_dragon", name: "ちえのりゅう",
+    maxHp: 150, attack: 35, defense: 25, magic: 40,
+    expReward: 2000, goldReward: 10, minLevel: 1,
+    color: 0x34d399, shape: "dragon", element: "fire",
+    physResist: 0.15, magicResist: 0.15, speed: 14,
+    statusResist: { poison: 0.8, paralysis: 0.6, sleep: 0.6, confuse: 0.6 },
+    spellIds: ["merami", "gira"],
+    dropTable: [],
+    studyOnly: true,
+  },
+  {
+    id: "study_boss", name: "がくもんのかみ",
+    maxHp: 300, attack: 55, defense: 40, magic: 70,
+    expReward: 5000, goldReward: 10, minLevel: 1,
+    color: 0xfbbf24, shape: "mage", element: "none",
+    physResist: 0.1, magicResist: 0.1, speed: 20,
+    statusResist: { poison: 0.9, paralysis: 0.8, sleep: 0.8, confuse: 0.8 },
+    spellIds: ["merazoma", "mahoadoru"],
+    dropTable: [],
+    studyOnly: true,
+  },
 ];
 
 export type ActiveEnemy = EnemyType & { uid: string; hp: number; floorHp: number; floorAtk: number };
@@ -554,11 +612,19 @@ export function advanceFloor(key: string = FLOOR_KEY): number {
 
 export function getFloorEnemyGroup(
   playerLevel: number, floor: number,
-  opts?: { goldDungeon?: boolean; forcedEnemyId?: string; excludeIds?: string[] },
+  opts?: { goldDungeon?: boolean; studyDungeon?: boolean; forcedEnemyId?: string; excludeIds?: string[] },
 ): ActiveEnemy[] {
   const isBoss = floor % 5 === 0;
-  const normalEnemies = ENEMIES.filter(e => !e.isRare && !e.goldOnly);
-  const rareEnemies   = ENEMIES.filter(e => e.isRare && (!e.goldOnly || opts?.goldDungeon));
+  const normalEnemies = ENEMIES.filter(e => !e.isRare && !e.goldOnly && !e.studyOnly);
+  const rareEnemies   = ENEMIES.filter(e => e.isRare && (!e.goldOnly || opts?.goldDungeon) && !e.studyOnly);
+
+  // 学習ダンジョンでは学習専用モンスターのみが出現する
+  if (opts?.studyDungeon) {
+    const pool = ENEMIES.filter(e => e.studyOnly);
+    const base = pool[Math.floor(Math.random() * pool.length)];
+    const hp = base.maxHp;
+    return [{ ...base, uid: `${base.id}-0`, hp, floorHp: hp, floorAtk: base.attack }];
+  }
 
   // ゴールドダンジョンでは換金アイテムを落とす専用モンスターのみが出現する
   if (opts?.goldDungeon) {

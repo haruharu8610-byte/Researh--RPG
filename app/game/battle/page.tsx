@@ -25,7 +25,7 @@ import { MATERIALS, addMaterial } from "@/lib/materials";
 import { RARITY_COLOR, RARITY_LABEL, DEFAULT_CRAFT_EFFECT } from "@/lib/rarity";
 import { syncPlayerState } from "@/lib/playerState";
 import { recordDefeatedEnemy, getDefeatedEnemyIds } from "@/lib/bestiary";
-import { calcTotalPoints } from "@/lib/exp";
+import { calcTotalPoints, addBattleExp } from "@/lib/exp";
 import { calcLevel } from "@/lib/level";
 
 const CRAFTED_KEY = "rpg_crafted_list";
@@ -266,6 +266,10 @@ function BattlePageInner() {
     const goldMult = isMaterialMode ? 0.5 : isGoldMode ? 3 : 1;
     const totalGold = Math.round(updatedEnemies.reduce((s, e) => s + e.goldReward, 0) * goldMult);
     addGold(totalGold);
+    if (isStudyMode) {
+      const totalExp = updatedEnemies.reduce((s, e) => s + e.expReward, 0);
+      addBattleExp(totalExp);
+    }
     addInventory("potion", 1);
     const newVic = victoriesRef.current + 1;
     victoriesRef.current = newVic;
@@ -293,9 +297,12 @@ function BattlePageInner() {
       }
     }
 
+    const expGained = isStudyMode ? updatedEnemies.reduce((s, e) => s + e.expReward, 0) : 0;
     pushMessages([
       `てきをたおした！`,
-      `${totalGold}Gてにいれた！`,
+      isStudyMode
+        ? `${totalGold}Gと${expGained}EXPてにいれた！📚`
+        : `${totalGold}Gてにいれた！`,
       ...dropMsgs,
       `ポーション1個もらった！`,
       ...(isFlatDungeon ? [] : [`${nextFloor}階へ進む…`]),
@@ -701,7 +708,7 @@ function BattlePageInner() {
       const boss = !isFlatDungeon && currentFloor % 5 === 0;
       // 素材ダンジョンをランダムで選んだ場合は、まだ倒したことのない敵を優先的に出現させる
       const excludeIds = isMaterialMode && !forcedEnemyId ? getDefeatedEnemyIds() : undefined;
-      const grp = getFloorEnemyGroup(level, currentFloor, { goldDungeon: isGoldMode, forcedEnemyId, excludeIds });
+      const grp = getFloorEnemyGroup(level, currentFloor, { goldDungeon: isGoldMode, studyDungeon: isStudyMode, forcedEnemyId, excludeIds });
       const vic = parseInt(localStorage.getItem(victoryKey) ?? "0", 10);
       const availableSpells = getAvailableSpells(level, job);
 
